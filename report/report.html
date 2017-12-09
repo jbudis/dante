@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dante report</title>
+    <script src="https://cdn.bio.sh/msa/latest/msa.min.gz.js"></script>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: Verdana, sans-serif;
+            font-size: 15px;
+            line-height: 1.5
+        }
+
+        .tg {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        .tg td {
+            padding: 10px 5px;
+            border-style: solid;
+            border-width: 1px;
+            overflow: hidden;
+            word-break: normal;
+        }
+
+        .tg th {
+            font-weight: normal;
+            padding: 10px 5px;
+            border-style: solid;
+            border-width: 1px;
+            overflow: hidden;
+            word-break: normal;
+        }
+
+        .tg .tg-s6z2 {
+            text-align: center
+        }
+
+        .pic60 {
+            width: 60% !important;
+            height: auto;
+        }
+
+        .pic30 {
+            width: 30% !important;
+            height: auto;
+        }
+    </style>
+</head>
+<body class="valo v-app">
+
+<h2 id="content">Content</h2>
+<ul>
+    <li><a href="#summary">Summary table</a></li>
+</ul>
+<ul>
+    {motifs_content}
+</ul>
+
+<h2 id="summary">Summary table</h2>
+<table class="tg">
+    <tr>
+        <th class="tg-s6z2" rowspan="2">Motif</th>
+        <th class="tg-s6z2" rowspan="2">STR<br>sequence</th>
+        <th class="tg-s6z2" colspan="2">Allele 1</th>
+        <th class="tg-s6z2" colspan="2">Allele 2</th>
+        <th class="tg-s6z2" rowspan="2">Overall<br>confidence</th>
+        <th class="tg-s6z2" colspan="2">Reads</th>
+        <th class="tg-s6z2" colspan="3">Postfilter</th>
+        <th class="tg-s6z2" rowspan="2">Sequence</th>
+    </tr>
+    <tr>
+        <td class="tg-s6z2">prediction</td>
+        <td class="tg-s6z2">confidence</td>
+        <td class="tg-s6z2">prediction</td>
+        <td class="tg-s6z2">confidence</td>
+        <td class="tg-s6z2">full</td>
+        <td class="tg-s6z2">partial</td>
+        <td class="tg-s6z2">bases</td>
+        <td class="tg-s6z2">modules</td>
+        <td class="tg-s6z2">max. errors</td>
+    </tr>
+    {table}
+</table>
+<p><a href="#content">Back to content</a></p>
+{motifs}
+</body>
+</html>

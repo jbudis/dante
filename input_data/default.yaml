@@ -1,0 +1,48 @@
+# Default parameters for DANTE = "Da Amazing NucleoTide Exposer"
+# If a parameter is missing in used configuration file, it is supplied from this file
+# Parameters marked as "required" are required (no shit, Sherlock!)
+# Parameters marked as "infer" are inferred during program run (not required)
+---
+general:                    # General parameters
+  output_dir: required      # Directory path for all results, created if it does not exist. Absolute or relative from current working directory.
+  cpu: 8                    # Number of processes to use in the analysis.
+  stranded: both            # Which strand(s) of reads to use. Accepted: "yes"/"reverse"/"both".
+  profiler: False           # Use time profiler?
+  output_all: False         # Output all reads, even pre-filtered. Warning: the output files may be quite long if turned on.
+  verbosity: 1              # How verbose Dante is. Use integers 0-3.
+
+allcall:                                                  # Parameters of genotypization
+  param_file: all_call/training_input/ion_torrent.params  # Parameter file for genotyping. Absolute or relative from 'dante.py' script.
+  prob_background: 0.001                                  # Probability of background "noise" reads.
+
+inputs:                     # List of input files. Each new entry starts with dash "-".
+  - path: required          # Path to a input file. Use "sys.stdin" for reading from the standard input (in that case "filetype" must be filled).
+    filetype: infer         # File type of this input file. If not provided, it will be inferred from the file suffix.
+    max_reads: all          # How many reads to process from this input file. Use "all" for processing of whole file.
+
+annotation:                 # Parameters for HMM annotation
+  snp_chance: 0.0005        # Probability of an SNP (Single Nucleotide Polymorphism) in reads. Estimated as 1/2000 based on the https://en.wikipedia.org/wiki/Single-nucleotide_polymorphism .
+  delete_prob: 0.0001       # Probability of a deletion of a single nucleotide in reads. Estimated as 1/5 chance of a SNP.
+  insert_prob: 0.0001       # Probability of an insertion of a single nucleotide in reads. Estimated as 1/5 chance of a SNP.
+  max_delete_skips: 1       # Maximal size of a deletion. Longer deletions (if allowed) are internally treated as subsequent individual deletions.
+  motif_frequency: 0.001    # Motif frequency, i.e. probability penalization of starting a motif. If too low (high penalization), annotation will miss sequences.
+
+motifs:                             # Parameters describing each motif. Each new entry starts with dash "-".
+  - full_name: required             # Name of a motif, required.
+    description: unnamed motif      # Description of this motif.
+    modules:                        # Annotation modules of this motif (contains usually three "- seq" sub-elements - flanking, repetition, flanking)
+      - seq: required               # Either flanking region or a repetitive region of the motif. Repetitive region starts with an estimated number of repetitions and a dash, e.g. "5-CAG".
+    prefilter:                      # Prefilter options for this motif
+      type: SimpleFilter            # Type of the filter. Accepted are: BamFilter (for SAM/BAM files), LevenshteinFilter (substring matching with errors), SimpleFilter (substring matching w/o errors), RegexFilter (regexp matching with errors), DummyFilter (accepts all), and MultiFilter (combines filters).
+      seq: infer                    # Sequence to filter for. Same syntax as in motifs/modules/seq, i.e. "3-CAG" means match "CAGCAGCAG". If not provided, it is inferred as repetition sequence with one less repetitions.
+      subfilters:                   # Subfilter description (only for MultiFilter), can contain multiple instances of filters. Each new entry starts with dash "-".
+      - type: SimpleFilter          # Type of the filter.
+        seq: infer                  # Sequence to filter for.
+    postfilter:                     # Post-filter option for this motif (can be supplied multiple times)
+      - repetitions: 'no'           # Minimum number of annotated module repetitions separated by commas, e.g. 1,3,1 means that we require 1 repetition of first module, 3 of second, and 1 of third. Supply 'no' for no filtering.
+        bases: 'no'                 # Minimum number of annotated nucleotides in each module separated by commas, e.g. 5,10,5 means that we require 5 annotated nucleotides in first module, 10 in second, and 5 in third. Supply 'no' for no filtering.
+        max_errors: 0.05            # Maximal number of errors (SNP/insertions/deletion) in annotation. Supply 'no' for no filtering.
+        max_errors_relative: True   # If this is True, "max_errors" is relative to the length of the read, i.e. 0.05 means, that maximum 5% of read can be errors.
+        index_rep: infer            # 1-based index of the (first) repetition module. If not provided it will be inferred as first module with repetition.
+        index_rep2: 'no'            # 1-based index of the second repetition module. If it is provided, Dante generates repetitions as a 2D plot and genotyping of these complex motifs must be done manually. Supply 'no' for normal run.
+...
