@@ -1,38 +1,49 @@
-general:
-  output_dir: report
-  cpu: 10
-  stranded: both # yes/reverse/both
-  profiler: False
+# Example parameters for DANTE = "Da Amazing NucleoTide Exposer"
+# If a parameter is missing in a configuration file, it is supplied from a default file distributed with Dante in "input_data/default.yaml"
+# Parameters marked as "infer" are inferred during program run (not required)
+---
+general:                    # General parameters
+  output_dir: report        # Directory path for all results, created if it does not exist. Absolute or relative from current working directory.
+  cpu: 8                    # Number of processes to use in the analysis.
+  stranded: both            # Which strand(s) of reads to use. Accepted: "yes"/"reverse"/"both".
+  profiler: False           # Use time profiler?
+  output_all: False         # Output all reads, even pre-filtered. Warning: the output files may be quite long if turned on.
+  verbosity: 1              # How verbose Dante is. Use integers 0-3.
 
-allcall:
-  param_file: miseq_params.txt
+allcall:                            # Parameters of genotypization
+  param_file: miseq_params.txt      # Parameter file for genotyping. Absolute or relative from 'dante.py' script.
+  prob_background: 0.001            # Probability of background "noise" reads.
 
-inputs:
-  - path: example_R1.fastq.gz
-    filetype: infer
+inputs:                       # List of input files. Each new entry starts with dash "-".
+  - path: example_R1.fastq.gz # Path to a input file. Use "sys.stdin" for reading from the standard input (in that case "filetype" must be filled).
+    filetype: infer           # File type of this input file. If not provided, it will be inferred from the file suffix.
+    max_reads: all            # How many reads to process from this input file. Use "all" for processing of whole file.
   - path: example_R2.fastq.gz
     filetype: infer
+    max_reads: all
 
-annotation:
-  delete_prob: 0.0001
-  insert_prob: 0.0001
-  max_delete_skips: 1
-  motif_frequency: 0.005
-  snp_chance: 0.0005
+annotation:                 # Parameters for HMM annotation
+  snp_chance: 0.0005        # Probability of an SNP (Single Nucleotide Polymorphism) in reads. Estimated as 1/2000 based on the https://en.wikipedia.org/wiki/Single-nucleotide_polymorphism .
+  delete_prob: 0.0001       # Probability of a deletion of a single nucleotide in reads. Estimated as 1/5 chance of a SNP.
+  insert_prob: 0.0001       # Probability of an insertion of a single nucleotide in reads. Estimated as 1/5 chance of a SNP.
+  max_delete_skips: 1       # Maximal size of a deletion. Longer deletions (if allowed) are internally treated as subsequent individual deletions.
+  motif_frequency: 0.001    # Motif frequency, i.e. probability penalization of starting a motif. If too low (high penalization), annotation will miss sequences.
 
-motifs:
-  - full_name: DMPK
-    description: Dystrophia Myotonica Protein Kinase
-    modules:
-      - seq: GAGGGAGGGGCCGGGTCCGCGGCCGGCGAACGGGGCTCGAAGGGTCCTTGTAGCCGGGAATG
-      - seq: 5-CTG
-      - seq: GGGGGATCACAGACCATTTCTTTCTTTCGGCCAGGCTGAGGCCCTGACGTGGATGGGCAAACT
-    prefilter:
-      type: SimpleFilter
-      seq: 4-CTG
-    postfilter:
-      - repetitions: 1,3,1
-        bases: 5,10,5
+motifs:                                                                       # Parameters describing each motif. Each new entry starts with dash "-".
+  - full_name: DMPK                                                           # Name of a motif, required.
+    description: Dystrophia Myotonica Protein Kinase                          # Description of this motif.
+    modules:                                                                  # Annotation modules of this motif (contains usually three "- seq" sub-elements - flanking, repetition, flanking)
+      - seq: GAGGGAGGGGCCGGGTCCGCGGCCGGCGAACGGGGCTCGAAGGGTCCTTGTAGCCGGGAATG   # Left flanking region of the motif
+      - seq: 5-CTG                                                            # Repetitive region of the motif
+      - seq: GGGGGATCACAGACCATTTCTTTCTTTCGGCCAGGCTGAGGCCCTGACGTGGATGGGCAAACT  # Right flanking region of the motif
+    prefilter:                                                                # Prefilter options for this motif
+      type: SimpleFilter                                                      # Type of the filter. More in 'input_data/default.yaml'
+      seq: 4-CTG                                                              # Sequence to filter for. "4-CTG" equals "CTGCTGCTGCTG"
+    postfilter:                                                               # Post-filter option for this motif (can be supplied multiple times)
+      - repetitions: 1,3,1                                                    # Minimum number of annotated module repetitions separated by commas, e.g. 1,3,1 means that we require 1 repetition of first module, 3 of second, and 1 of third. Supply 'no' for no filtering.
+        bases: 5,10,5                                                         # Minimum number of annotated nucleotides in each module separated by commas, e.g. 5,10,5 means that we require 5 annotated nucleotides in first module, 10 in second, and 5 in third. Supply 'no' for no filtering.
+        max_errors: 0.05                                                      # Maximal number of errors (SNP/insertions/deletion) in annotation. Supply 'no' for no filtering.
+        max_errors_relative: True                                             # If this is True, "max_errors" is relative to the length of the read, i.e. 0.05 means, that maximum 5% of read can be errors.
 
   - full_name: SpinAtax1
     description: ATXN1 gén (spinocerebelárna ataxia = SCA1)
