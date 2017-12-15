@@ -182,8 +182,8 @@ if PROFILE:
 report.configure_logger("%s/dante.log" % config['general']['output_dir'])
 report.log_str(templates.START_TIME.format(start=start_time), stdout_too=False)
 
-# print arguments
-report.log_str(arguments.save_arguments(config))
+# print arguments (too clunky)
+# report.log_str(arguments.save_arguments(config))
 
 # deduplicated reads
 dedup_ap = [[] for _ in range(len(config['motifs']))]

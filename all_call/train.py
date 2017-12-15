@@ -15,6 +15,26 @@ nan = float("nan")
 minf = float("-inf")
 
 
+def is_smth_near(profile, v1, rng=2):
+    """
+    Return index of something near if something exists near the target position. Else return None.
+    :param profile: list(int) - profile
+    :param v1: int - target place
+    :param rng: int - how far to search from target
+    :return: int/None - either a place where we have found something or None
+    """
+    # fill the search space
+    to_search = [v1]
+    for i in range(1, rng + 1):
+        to_search.extend([v1 - i, v1 + i])
+    # search the search space
+    for i in to_search:
+        if profile[i] != 0:
+            return i
+
+    return None
+
+
 def good_for_sampling(sample, v1, v2, profiles, single=False, extract_all=False):
     """
     Tests if the sample is good for training purposes.
@@ -28,7 +48,9 @@ def good_for_sampling(sample, v1, v2, profiles, single=False, extract_all=False)
     """
     if sample not in profiles.index:
         return False
-    if profiles.loc[sample][v1] == 0 or profiles.loc[sample][v2] == 0:
+    if v1 not in profiles.columns or v2 not in profiles.columns:
+        return False
+    if is_smth_near(profiles.loc[sample], v1) is None or is_smth_near(profiles.loc[sample], v2) is None:
         return False
     if v1 == 0 and v2 == 0:
         return False
@@ -40,7 +62,7 @@ def good_for_sampling(sample, v1, v2, profiles, single=False, extract_all=False)
         return v1 == v2
     else:
         ret = max(v2, v1) - min(v2, v1) > 1
-        # print(sample, v1, v2, ret)
+        # print("Good for sampling:", sample, v1, v2, ret, profiles.loc[sample])
         return ret
 
 
@@ -77,8 +99,14 @@ def split_profile(sample, v1, v2, profiles, verbose=False):
 
     # fill partial arrays:
     test_array = np.array(profiles.loc[sample])
+    v1 = is_smth_near(profiles.loc[sample], v1)
+    v2 = 0 if v2 == 0 else is_smth_near(profiles.loc[sample], v2)
+    if v1 is None:
+        print("ERROR: this should not happen")
+        exit(-1)
+
     left = fill_array(test_array, v1)
-    if v2 == v1 or v2 == 0:
+    if v2 == v1 or v2 == 0 or v2 is None:
         right = []
     else:
         right = fill_array(test_array, v2)
@@ -134,12 +162,12 @@ def extract_alleles(sample, true_values, profiles, verbose=False):
     """
     Splits sample into 1 or 2 subsamples for training
     :param sample: int - sample number
-    :param true_values: dict{int:tuple} - true values of alleles
+    :param true_values: pd.DataFrame - true values of alleles
     :param profiles: ndarray - profile (counts of STRs)
     :param verbose: bool - be verbose?
     :return: dict{int: ndarray} - true_values to corresponding sub-profiles
     """
-    v1, v2 = true_values[sample]
+    v1, v2 = true_values.get_value(index=sample, col=0), true_values.get_value(index=sample, col=1)
 
     # get subprofiles
     left, right = split_profile(sample, v1, v2, profiles, verbose)
@@ -187,7 +215,10 @@ def norm_profiles(all_profiles):
     res = copy.deepcopy(all_profiles)
     for td in res:
         for k, v in td.items():
-            td[k] = v / float(sum(v))
+            if sum(v) == 0:
+                print("divided by 0.", sum(v), v, k, td[k])
+            else:
+                td[k] = v / float(sum(v))
 
     return res
 

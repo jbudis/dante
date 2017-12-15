@@ -58,7 +58,8 @@ def load_arguments():
     try:
         if not os.path.exists(config['general']['output_dir']):
             os.makedirs(config['general']['output_dir'])
-        basename = args.config_file.split('/')[-1]
+        #basename = args.config_file.split('/')[-1]
+        basename = 'config.yaml'
         config_output = '%s/%s' % (config['general']['output_dir'], basename)
         yaml_reader.save_arguments(config, config_output)
         yaml_reader.add_defaults(config, defaults)

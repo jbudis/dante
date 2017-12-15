@@ -7,6 +7,9 @@ import json
 import sys
 import pandas as pd
 import re
+import os
+from glob import glob
+from arguments import yaml_reader
 
 # default parameters for inference
 DEFAULT_MODEL_PARAMS = (-0.0107736, 0.00244419, 0.0, 0.00440608)
@@ -24,41 +27,173 @@ def load_arguments():
     :return: argparse arguments
     """
     parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
-    training = parser.add_argument_group('Training')
-    training.add_argument('-t', '--train', action='store_true', help="Train parameters of the model based on the true values. Do not predict values. Default: False")
-    training.add_argument('--fit-function', choices=fit_functions.keys(), default="linear", help="Function to approximate deletion rate of STRs. Default: linear")
-    training.add_argument('--model-fig', type=str, default=None, help="File to write .png file with comparison of models and train data. Suffix determines the type of image file.")
+    parser.add_argument('dir_structure', type=path_exists, help='Directory with multiple Dante results directories. '
+                                                                'Each Dante directory has filled "all_profiles.txt" and "all_profiles.true" files.')
 
-    inference = parser.add_argument_group('Inference')
-    inference.add_argument('--minimal-prob', type=float, default=0.0001, help="Base chance to generate any STR. Counters noise in data at the cost of decreased confidence.")
-    inference.add_argument('--minimal-weight', type=float, default=0.15,
-                           help="Minimal weight of the model for second allele. Comes into use only when alleles are far from each other, for example (5, 20).")
-    inference.add_argument('--pcolor', type=str, default=None,
-                           help="File prefix to write image file(s) with pcolor image of confidence of each combination of alleles.")
-    inference.add_argument('--relative', action='store_true', help="Use relative read count drop parameters.")
-    inference.add_argument('-o', '--output', type=str, default=None, help="File prefix to write the predicted values of alleles. If not provided, output goes to standard output. ")
-    inference.add_argument('--index-rep', type=int, default=None, help="Index of the repeating component. If not provided, do all of them.")
+    # training.add_argument('--model-fig', type=str, default=None, help="File to write .png file with comparison of models and train data. Suffix determines the type of image file.")
 
-    input_args = parser.add_argument_group('Input/Output')
-    input_args.add_argument('--profiles', type=str, required=True, help="TSV file or .npy file with one or more profiles. Required.")
-    input_args.add_argument('--old-profiles', action='store_true', help="Expect profiles in old style (not Dante's 'repetitions.txt')")
-    input_args.add_argument('--true-values', type=str, default=None, help="True values for training of profiles. Required if --train is set.")
-    input_args.add_argument('--params-file', type=str, default=None, help="File with parameters of the model (output of training, input of inference).")
-    input_args.add_argument('-v', '--verbosity-level', type=int, choices=range(3), default=1, help="Level of verbosity, default 1.")
-    input_args.add_argument('--output-profile', type=str, default=None, help="File, where to append the profile, default: None")
-    input_args.add_argument('-l', '--len_repeating', type=int, default=3, help="Length of the STR. Used for read drop modelling.")
+    # parser.add_argument('--profiles', type=str, required=True, help="TSV file or .npy file with one or more profiles. Required.")
+    parser.add_argument('--output-params', type=convert_to_absolute, default=None, help="File with parameters of the model to save to. Default: dir_structure/params.txt")
+    parser.add_argument('--output-profile', type=convert_to_absolute, default=None, help="File, where to collect all the profiles. Default: dir_structure/all_profiles.txt")
+    parser.add_argument('--output-true', type=convert_to_absolute, default=None, help="File, where to collect all the true values. Default: dir_structure/all_profiles.true")
+
+    parser.add_argument('--input-true', type=convert_to_absolute, default=None, help="File, with all the true values. Default: collect from Dante predictions")
+
+    parser.add_argument('--config-dir', type=path_exists, default=None, help="Directory, where to save new config files. Default: without saving")
+    parser.add_argument('--fit-function', choices=fit_functions.keys(), default="linear", help="Function to approximate deletion rate of STRs. Default: linear")
+    parser.add_argument('-v', '--verbosity-level', type=int, choices=range(3), default=1, help="Level of verbosity, default 1.")
+    # input_args.add_argument('-l', '--len_repeating', type=int, default=3, help="Length of the STR. Used for read drop modelling.")
 
     args = parser.parse_args()
 
     # check
-    if args.train and args.true_values is None:
-        print("ERROR: --train requires --true-values to be set")
-        exit(-1)
-
-    if not args.train and args.params_file is None:
-        print("WARNING: --params-file is not specified, default parameters are used!!!")
+    if args.output_profile is None:
+        args.output_profile = '%s/all_profiles.txt' % args.dir_structure
+    if args.output_true is None:
+        args.output_true = '%s/all_profiles.true' % args.dir_structure
+    if args.output_params is None:
+        args.output_params = '%s/params.txt' % args.dir_structure
 
     return args
+
+def convert_to_absolute(path):
+    """
+    Converts to absolute path, do not check if exists.
+    :param path: str - path
+    :return: str - absolute path
+    """
+    return os.path.abspath(path)
+
+def path_exists(path):
+    """
+    Checks if the supplied path exists.
+    :param path: str - path to a file or dir
+    :return: str - absolute path to a file or dir
+    """
+    try:
+        path = convert_to_absolute(path)
+    except Exception:
+        print('ERROR: %s directory does not exists' % path)
+        exit(-1)
+
+    return path
+
+
+def crawl_dante(dir_structure):
+    """
+    Crawl Dante dir and collect config, profile, and true_vals files
+    :param dir_structure: str - directory above the Dante directory structures, here we start the crawl
+    :return: list(str) x3 - list of paths to configs, profiles, and true values
+    """
+
+    # read all configs
+    configs = glob('%s/*/config.yaml' % dir_structure)
+
+    good_configs = []
+    profiles = []
+    true_vals = []
+
+    # check if every config has its profiles and true_vals
+    for config in configs:
+        profile = '%s/all_profiles.txt' % os.path.dirname(config)
+        if not os.path.exists(profile):
+            print('WARNING: "%s" exists but "%s" does not!!' % (config, profile))
+            continue
+        true_val = '%s/all_profiles.true' % os.path.dirname(config)
+        if not os.path.exists(true_val):
+            print('WARNING: "%s" exists but "%s" does not!!' % (config, true_val))
+            continue
+
+        # all ok, write them:
+        good_configs.append(config)
+        profiles.append(profile)
+        true_vals.append(true_val)
+
+    return good_configs, profiles, true_vals
+
+
+def get_name(path):
+    """
+    Get directory name from path to config/profile/...
+    :param path: str - path
+    :return: str - directory name without blanks
+    """
+    directory = path.split('/')[-2]
+    directory = directory.replace(' ', '_')
+    return directory
+
+
+def update_config(config_path, save_dir, params_file):
+    """
+    Create new config file with inputs from the outputs of Dante.
+    :param config_path: str - path to the config file
+    :param save_dir: str - directory where to save the new config
+    :param save_dir: str - directory where to save the new config
+    :return: None
+    """
+
+    # gather inputs:
+    directory = os.path.dirname(config_path)
+    inputs = glob('%s/*/annotations*' % directory)
+    inputs += glob('%s/*/filtered_primer*' % directory)
+
+    # read the old config:
+    config = yaml_reader.load_arguments(config_path)
+
+    # update the config with new inputs
+    config['inputs'] = []
+    for input in inputs:
+        config['inputs'].append({'path': input})
+
+    # update the config with new params
+    config['allcall']['param_file'] = params_file
+
+    # add "_retrained" to output dirs
+    config['general']['output_dir'] = '%s_retrained' % config['general']['output_dir']
+
+    # write it
+    name = get_name(config_path)
+    config_name = '%s/%s_config.yaml' % (save_dir, name)
+    yaml_reader.save_arguments(config, config_name)
+
+
+def merge_profiles(profiles, output_file):
+    """
+    Merge all profiles according to the name of dirs and output them.
+    :param profiles: list(str) - list of paths to profiles
+    :param output_file: str - output file for merged file
+    :return: pd.DataFrame - merged DataFrame with all data
+    """
+    if len(profiles) == 0:
+        return None
+
+    # create empty dataframe
+    all_profiles = pd.DataFrame()
+
+    # and fill it
+    for profile in profiles:
+        name = get_name(profile)
+
+        # get the maximal number of columns:
+        max_cols = 0
+        with open(profile) as f:
+            for line in f:
+                max_cols = max(max_cols, line.count('\t'))
+
+        # write to aggregated file:
+        current = pd.read_csv(profile, sep='\t', header=None, names=['index'] + range(max_cols), index_col=0, parse_dates=True, engine='python')
+        current.index = map(lambda x: '%s_%s' % (name, x), current.index)
+        all_profiles = pd.concat([all_profiles, current])
+
+    # fill not available data:
+    all_profiles = all_profiles.fillna(0).astype(int)
+    all_profiles.sort_index(inplace=True)
+
+    # save it:
+    all_profiles.to_csv(output_file, sep='\t')
+
+    # return it
+    return all_profiles
 
 
 def read_dante(filename):
