@@ -76,58 +76,60 @@ else:
     end_it(start_time)
     exit(-1)
 
-# filter profiles good for training:
-test_samples = filter(lambda sample: train.good_for_sampling(sample, merged_true.get_value(index=sample, col=0), merged_true.get_value(index=sample, col=1),
-                                                             merged_profile, single=False), merged_true.index)
-single_samples = filter(lambda sample: train.good_for_sampling(sample, merged_true.get_value(index=sample, col=0), merged_true.get_value(index=sample, col=1),
-                                                               merged_profile, single=True), merged_true.index)
-print("Extracted:\n"
-      "  %3d good training samples\n"
-      "  %3d single values training samples" % (len(test_samples), len(single_samples)), file=sys.stderr)
+if not args.prepare:
 
-# samples_struct is list(dict(int:ndarray(int))) - list of all samples with dicts of alleles and their respective arrays
-all_samples = test_samples + single_samples
-samples_struct = map(lambda sample: train.extract_alleles(sample, merged_true, merged_profile, args.verbosity_level > 1), all_samples)
+    # filter profiles good for training:
+    test_samples = filter(lambda sample: train.good_for_sampling(sample, merged_true.get_value(index=sample, col=0), merged_true.get_value(index=sample, col=1),
+                                                                 merged_profile, single=False), merged_true.index)
+    single_samples = filter(lambda sample: train.good_for_sampling(sample, merged_true.get_value(index=sample, col=0), merged_true.get_value(index=sample, col=1),
+                                                                   merged_profile, single=True), merged_true.index)
+    print("Extracted:\n"
+          "  %3d good training samples\n"
+          "  %3d single values training samples" % (len(test_samples), len(single_samples)), file=sys.stderr)
 
-# normalize (for model training):
-if args.verbosity_level >= 2:
-    print(samples_struct)
-print("Normalizing...", file=sys.stderr)
-samples_struct_norm = train.norm_profiles(samples_struct)
+    # samples_struct is list(dict(int:ndarray(int))) - list of all samples with dicts of alleles and their respective arrays
+    all_samples = test_samples + single_samples
+    samples_struct = map(lambda sample: train.extract_alleles(sample, merged_true, merged_profile, args.verbosity_level > 1), all_samples)
 
-# train the model:
-print("Training of the binomial model...", file=sys.stderr)
-start = [0.005, 0.0005, 0.01, 0.005]
-params = scipy.optimize.fmin(train.comparison, start, args=(samples_struct, input.fit_functions[args.fit_function]), xtol=0.000001, maxfun=1000000, maxiter=1000000)
+    # normalize (for model training):
+    if args.verbosity_level >= 2:
+        print(samples_struct)
+    print("Normalizing...", file=sys.stderr)
+    samples_struct_norm = train.norm_profiles(samples_struct)
 
-# count the occurrences:
-nums, nums_prop = train.count_occurrences(samples_struct, len_repeating=3)
+    # train the model:
+    print("Training of the binomial model...", file=sys.stderr)
+    start = [0.005, 0.0005, 0.01, 0.005]
+    params = scipy.optimize.fmin(train.comparison, start, args=(samples_struct, input.fit_functions[args.fit_function]), xtol=0.000001, maxfun=1000000, maxiter=1000000)
 
-# train read count drop:
-print("Training of linear read count drop (absolute)...", file=sys.stderr)
-params_read_drop = train.train_read_drop_abs(nums)
-if params_read_drop is None:
-    params_read_drop = input.DEFAULT_READ_DROP
+    # count the occurrences:
+    nums, nums_prop = train.count_occurrences(samples_struct, len_repeating=3)
 
-print("Training of linear read count drop (relative)...", file=sys.stderr)
-params_read_drop_rel = train.train_read_drop_rel(nums_prop)
-if params_read_drop_rel is None:
-    params_read_drop_rel = input.DEFAULT_READ_DROP
+    # train read count drop:
+    print("Training of linear read count drop (absolute)...", file=sys.stderr)
+    params_read_drop = train.train_read_drop_abs(nums)
+    if params_read_drop is None:
+        params_read_drop = input.DEFAULT_READ_DROP
 
-# save the params
-print("Writing the parameters to output (%s)..." % args.output_params if args.output_params is not None else "stdout", file=sys.stderr)
-if args.output_params is not None:
-    with open(args.output_params, 'w') as f:
-        train.write_params(f, params, params_read_drop, params_read_drop_rel, args.fit_function, print_all=True)
-else:
-    train.write_params(sys.stdout, params, params_read_drop, params_read_drop_rel, args.fit_function, print_all=True)
+    print("Training of linear read count drop (relative)...", file=sys.stderr)
+    params_read_drop_rel = train.train_read_drop_rel(nums_prop)
+    if params_read_drop_rel is None:
+        params_read_drop_rel = input.DEFAULT_READ_DROP
 
-# create new config files (if needed)
-if args.config_dir is not None:
-    print("Ceating new config files in %s..." % args.config_dir, file=sys.stderr)
-    for config in configs:
-        # read the config and output new one
-        input.update_config(config, args.config_dir, args.output_params)
+    # save the params
+    print("Writing the parameters to output (%s)..." % args.output_params if args.output_params is not None else "stdout", file=sys.stderr)
+    if args.output_params is not None:
+        with open(args.output_params, 'w') as f:
+            train.write_params(f, params, params_read_drop, params_read_drop_rel, args.fit_function, print_all=True)
+    else:
+        train.write_params(sys.stdout, params, params_read_drop, params_read_drop_rel, args.fit_function, print_all=True)
+
+    # create new config files (if needed)
+    if args.config_dir is not None:
+        print("Ceating new config files in %s..." % args.config_dir, file=sys.stderr)
+        for config in configs:
+            # read the config and output new one
+            input.update_config(config, args.config_dir, args.output_params)
 
 # write end time
 end_it(start_time)

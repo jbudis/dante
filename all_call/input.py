@@ -42,6 +42,7 @@ def load_arguments():
     parser.add_argument('--config-dir', type=path_exists, default=None, help="Directory, where to save new config files. Default: without saving")
     parser.add_argument('--fit-function', choices=fit_functions.keys(), default="linear", help="Function to approximate deletion rate of STRs. Default: linear")
     parser.add_argument('-v', '--verbosity-level', type=int, choices=range(3), default=1, help="Level of verbosity, default 1.")
+    parser.add_argument('-p', '--prepare', action='store_true', help="Only prepare files, do not run training.")
     # input_args.add_argument('-l', '--len_repeating', type=int, default=3, help="Length of the STR. Used for read drop modelling.")
 
     args = parser.parse_args()
