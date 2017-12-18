@@ -187,7 +187,8 @@ def merge_profiles(profiles, output_file):
         all_profiles = pd.concat([all_profiles, current])
 
     # fill not available data:
-    all_profiles = all_profiles.fillna(0).astype(int)
+    all_profiles = all_profiles.fillna(0)
+    all_profiles = all_profiles.applymap(lambda x: x if type(x) is str else str(int(x)))
     all_profiles.sort_index(inplace=True)
 
     # save it:

@@ -292,14 +292,6 @@ for i, (motif, annot) in enumerate(zip(config['motifs'], annotations)):
 
 ##### All_Call part of DANTE
 
-# delete all_profiles:
-all_profiles = '%s/all_profiles.txt' % config['general']['output_dir']
-all_true = '%s/all_profiles.true' % config['general']['output_dir']
-if os.path.exists(all_profiles):
-    os.remove(all_profiles)
-if os.path.exists(all_true):
-    os.remove(all_true)
-
 # run all_call
 for i, motif in enumerate(config['motifs']):
 
@@ -356,7 +348,7 @@ for i, motif in enumerate(config['motifs']):
 
 ##### generation of reports and finalizing
 
-# generate report
+# generate report and output files for whole run
 report.log_str('Generating final report')
 report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'])
 

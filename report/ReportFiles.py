@@ -191,16 +191,33 @@ def sorted_repetitions(annotations):
     return sorted(count_dict.items(), key=lambda (k, v): tuple_sort_key(k))
 
 
-def write_histogram(out_file, annotations):
+def write_histogram(out_file, annotations, profile_file=None, index_rep=None):
     """
     Stores quantity of different combinations of module repetitions into text file
-    :param out_file: Output file prefix
+    :param out_file: str - output file for repetitions
     :param annotations: Annotated reads
+    :param profile_file: str - output file for profile
+    :param index_rep: int - index repetition
     """
+    # setup
+    sorted_reps = sorted_repetitions(annotations)
+
+    # write repetitions.txt
     with open(out_file, 'w') as fw:
-        for repetitions, counts in sorted_repetitions(annotations):
+        for repetitions, counts in sorted_reps:
             rep_code = '\t'.join(map(str, repetitions))
             fw.write('%s\t%s\n' % (counts, rep_code))
+
+    # write profile
+    if profile_file is not None and index_rep is not None:
+        length = max([0] + map(lambda x: x[0][index_rep], sorted_reps))
+        profile = np.zeros(length + 1, dtype=int)
+
+        for repetitions, counts in sorted_reps:
+            profile[repetitions[index_rep]] += counts
+
+        with open(profile_file, 'w') as f:
+            f.write('\t'.join(map(str, profile)))
 
 
 def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq, seq2):
@@ -341,7 +358,7 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
     write_annotations('%s/filtered_%d.txt' % (motif_dir, j + 1), filtered_annotations)
     write_annotations('%s/filtered_primer_%d.txt' % (motif_dir, j + 1), filt_primer)
     write_summary_statistics('%s/stats_%d.txt' % (motif_dir, j + 1), quality_annotations, all_reads)
-    write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations)
+    write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1)
     write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer)
     if index_rep2 is not None:
         # print("aps", len(dedup_ap[i]))
@@ -445,6 +462,7 @@ def get_read_count(filename):
 
     return reads
 
+
 # add to report table
 def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence):
     """
@@ -488,43 +506,60 @@ def write_report(report_dir, motifs, output_dir):
     result_table = pd.DataFrame([], columns=['Motif', 'Sequence', 'Repetition index', 'Postfilter bases', 'Postfilter repetitions', 'Overall confidence',
                                              'Allele 1 prediction', 'Allele 1 confidence', 'Allele 2 prediction', 'Allele 2 confidence', 'Reads (full)', 'Reads (partial)'])
 
+    # merge all_profiles:
+    all_profiles = '%s/all_profiles.txt' % output_dir
+    all_true = '%s/all_profiles.true' % output_dir
+
     mcs = []
     ms = []
     rows = []
-    for m in motifs:
-        seq = get_seq_from_module(m['modules'])
-        motif_name = m['full_name']
-        description = m['description']
-        for i, postfilter in enumerate(m['postfilter']):
-            # read files
-            rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
-            if not os.path.exists(rep_file):
-                rep_file = None
-            pcol_file = '%s/%s/pcolor_%d.png' % (output_dir, motif_name, i + 1)
-            if not os.path.exists(pcol_file):
-                pcol_file = None
-            align_file = '%s/%s/alignment_%d.fasta' % (output_dir, motif_name, i + 1)
-            if not os.path.exists(align_file):
-                align_file = None
-            confidence = read_all_call('%s/%s/allcall_%d.txt' % (output_dir, motif_name, i + 1))
 
-            # get number of reads:
-            reads_blue = get_read_count('%s/%s/repetitions_%d.txt' % (output_dir, motif_name, i + 1))
-            reads_grey = get_read_count('%s/%s/repetitions_grey_%d.txt' % (output_dir, motif_name, i + 1))
+    with open(all_profiles, 'w') as pf, open(all_true, 'w') as tf:
+        for m in motifs:
+            seq = get_seq_from_module(m['modules'])
+            motif_name = m['full_name']
+            description = m['description']
+            for i, postfilter in enumerate(m['postfilter']):
+                # read files
+                rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
+                if not os.path.exists(rep_file):
+                    rep_file = None
+                pcol_file = '%s/%s/pcolor_%d.png' % (output_dir, motif_name, i + 1)
+                if not os.path.exists(pcol_file):
+                    pcol_file = None
+                align_file = '%s/%s/alignment_%d.fasta' % (output_dir, motif_name, i + 1)
+                if not os.path.exists(align_file):
+                    align_file = None
+                confidence = read_all_call('%s/%s/allcall_%d.txt' % (output_dir, motif_name, i + 1))
 
-            # generate rows of table and images
-            highlight = [postfilter['index_rep'] - 1]
-            if postfilter['index_rep2'] != 'no':
-                highlight.append(postfilter['index_rep2'] - 1)
-            row = html_templates.generate_row(motif_name, seq, confidence, postfilter, reads_blue, reads_grey, highlight=highlight)
-            mc, m = html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
+                # get number of reads:
+                reads_blue = get_read_count('%s/%s/repetitions_%d.txt' % (output_dir, motif_name, i + 1))
+                reads_grey = get_read_count('%s/%s/repetitions_grey_%d.txt' % (output_dir, motif_name, i + 1))
 
-            mcs.append(mc)
-            ms.append(m)
-            rows.append(row)
+                # generate rows of table and images
+                highlight = [postfilter['index_rep'] - 1]
+                if postfilter['index_rep2'] != 'no':
+                    highlight.append(postfilter['index_rep2'] - 1)
+                row = html_templates.generate_row(motif_name, seq, confidence, postfilter, reads_blue, reads_grey, highlight=highlight)
+                mc, m = html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
 
-            # add to table:
-            result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
+                mcs.append(mc)
+                ms.append(m)
+                rows.append(row)
+
+                # add to csv table:
+                result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
+
+                # add to profiles
+                if postfilter['index_rep2'] == 'no':
+                    with open('%s/%s/profile_%d.txt' % (output_dir, motif_name, i + 1)) as po:
+                        line = po.readline()
+                        pf.write('%s_%d\t%s\n' % (motif_name, i + 1, line))
+
+                    # add to true
+                    if confidence is None:
+                        confidence = [0.0, 0, 0]
+                    tf.write('%s_%d\t%s\t%s\n' % (motif_name, i + 1, str(confidence[1]), str(confidence[2])))
 
     # save the report file
     script_dir = os.path.dirname(os.path.abspath(__file__))

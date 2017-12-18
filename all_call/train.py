@@ -29,7 +29,7 @@ def is_smth_near(profile, v1, rng=2):
         to_search.extend([v1 - i, v1 + i])
     # search the search space
     for i in to_search:
-        if profile[i] != 0:
+        if 0 <= i < len(profile) and profile[i] != 0:
             return i
 
     return None
@@ -48,6 +48,14 @@ def good_for_sampling(sample, v1, v2, profiles, single=False, extract_all=False)
     """
     if sample not in profiles.index:
         return False
+    try:
+        v1 = int(v1)
+    except ValueError:
+        v1 = 0
+    try:
+        v2 = int(v2)
+    except ValueError:
+        v2 = 0
     if v1 not in profiles.columns or v2 not in profiles.columns:
         return False
     if is_smth_near(profiles.loc[sample], v1) is None or is_smth_near(profiles.loc[sample], v2) is None:
