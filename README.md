@@ -1,7 +1,7 @@
 # Dante
  Dante ("Da Amazing NucleoTide Exposer") is an alignment-free algorithm for genotyping STR alleles based on NGS reads originating from the STR locus of interest. The method accounts for natural deviations from the expected sequence, such as variation in the repeat count, sequencing errors, ambiguous bases, and complex loci containing several different motifs.
 
-Dante profiles sequenced DNA fragments against STR motifs defined in a user-friendly configuration file. For each of the target motifs, the final report contains the following (an eample of the final report is publicly available on http://158.195.68.48/dante/example/report.html): 
+Dante profiles sequenced DNA fragments against STR motifs defined in a user-friendly configuration file. For each of the target motifs, [the final report](http://158.195.68.48/dante/example/report.html) contains the following: 
 - pair of the most probable genotypes with confidence scores
 - observed number of repetitions, probabilities of possible genotypes in a color plot
 - sequence logos corresponding to called alleles
