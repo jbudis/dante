@@ -138,7 +138,7 @@ if not args.prepare:
 
         # create new config files (if needed)
         if args.config_dir is not None:
-            print("Ceating new config files in %s..." % args.config_dir, file=sys.stderr)
+            print("Creating new config files in %s..." % args.config_dir, file=sys.stderr)
             for config in configs:
                 # read the config and output new one
                 input.update_config(config, args.config_dir, args.output_params)

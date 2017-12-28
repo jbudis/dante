@@ -12,7 +12,7 @@ general:                    # General parameters
   verbosity: 1              # How verbose Dante is. Use integers 0-3.
 
 allcall:                                                  # Parameters of genotypization
-  param_file: all_call/training_input/ion_torrent.params  # Parameter file for genotyping. Absolute or relative from 'dante.py' script.
+  param_file: all_call/training_input/ion_torrent.params  # Parameter file for genotyping. Absolute or relative from current directory.
   prob_background: 0.001                                  # Probability of background "noise" reads.
 
 inputs:                     # List of input files. Each new entry starts with dash "-".
