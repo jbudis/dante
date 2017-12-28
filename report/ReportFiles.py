@@ -265,8 +265,8 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
 
     # plot pcolor
     plt.figure(figsize=(12, 8))
-    img2 = plt.pcolor(data_primer[:max_ticks, :max_ticks], cmap='Blues', alpha=0.4, edgecolor=(1.0, 1.0, 1.0, 0.0), lw=0)
-    img1 = plt.pcolor(data[:max_ticks, :max_ticks], cmap=my_cmap)
+    img2 = plt.pcolor(data_primer[:max_ticks, :max_ticks], cmap='Blues', alpha=0.4, edgecolor=(1.0, 1.0, 1.0, 0.0), lw=0, vmin=np.min(data_primer), vmax=np.max(data_primer)+0.01)
+    img1 = plt.pcolor(data[:max_ticks, :max_ticks], cmap=my_cmap, vmin=np.min(data), vmax=np.max(data)+0.01)
     plt.xticks()
     plt.ylabel('STR %d [%s]' % (index_rep + 1, seq.split('-')[-1]))
     plt.xlabel('STR %d [%s]' % (index_rep2 + 1, seq2.split('-')[-1]))
