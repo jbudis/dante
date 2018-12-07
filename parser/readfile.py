@@ -231,8 +231,7 @@ class ReadFile:
                 mapq = read.mapping_quality
                 ref_id, left_pair_from_name = extract_pair(ref_id, None)
                 if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair:
-                    print("WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s %s %s %s %s chr%s:%d-%d" % (
-                        ref_id, read.qname, str(read.seq), str(read.qual), str(read.mapping_quality), str(read.chromosome), read.ref_start, read.ref_end))
+                    print("WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s" % (read.to_string()))
                 if left_pair is None:
                     left_pair = left_pair_from_name
             except ValueError:
