@@ -24,6 +24,7 @@ def extract_pair(read_id, previous_left_pair=None):
     """
     Parse the read_id and find pair information and shorten it.
     :param read_id: str - read id with pair info
+    :param previous_left_pair: bool/None - is this left pair? for consistency checking
     :return: tuple(str, bool/None) - read_id without pair info, extracted pair info
     """
     split = read_id.split()
@@ -81,7 +82,7 @@ class Read:
         if self.chromosome is not None:
             rs = str(self.ref_start if self.ref_start is not None else 'NA')
             re = str(self.ref_end if self.ref_end is not None else 'NA')
-            return '%s %s:%s-%s' % (self.sequence, self.chromosome, self.ref_start, self.ref_end)
+            return '%s %s:%s-%s' % (self.sequence, self.chromosome, rs, re)
         else:
             return self.sequence
 
@@ -228,7 +229,12 @@ class ReadFile:
                 ref_end = read.reference_end
                 ref_id = str(read.reference_name)
                 mapq = read.mapping_quality
-                ref_id, left_pair = extract_pair(ref_id, left_pair)
+                ref_id, left_pair_from_name = extract_pair(ref_id, None)
+                if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair:
+                    print("WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s %s %s %s %s chr%s:%d-%d" % (
+                        ref_id, read.qname, str(read.seq), str(read.qual), str(read.mapping_quality), str(read.chromosome), read.ref_start, read.ref_end))
+                if left_pair is None:
+                    left_pair = left_pair_from_name
             except ValueError:
                 # unaligned read?
                 ref_start = ref_end = ref_id = mapq = None
@@ -260,6 +266,7 @@ class ReadFile:
             reads = sys.stdin
         rid = "NO_ID"
         sequence = ""
+        left_pair_cur = None
         for i, line in enumerate(reads):
             if i % 4 == 0:
                 rid = line.strip()[1:]
@@ -292,6 +299,7 @@ class ReadFile:
         else:
             reads = sys.stdin
         seq, rid = '', None
+        left_pair_cur = None
         for line in reads:
             if line[0] == '>':
                 if seq:
@@ -317,6 +325,8 @@ class ReadFile:
         else:
             reads = sys.stdin
         rid = "NO_ID"
+        left_pair = None
+        complement = False
         for i, line in enumerate(reads):
             if line[0] == '>':
                 rid = line[1:].strip()
