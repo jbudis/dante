@@ -35,13 +35,17 @@ def load_arguments():
     :return: args - parsed arguments
     """
     description = templates.DANTE_DESCRIPTION
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description=textwrap.dedent(description))
+    try:
+        parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                         description=textwrap.dedent(description))
 
-    required = parser.add_argument_group('Required')
-    required.add_argument('config_file', type=nonempty_file, help="YAML configuration file.")
+        required = parser.add_argument_group('Required')
+        required.add_argument('config_file', type=nonempty_file, help="YAML configuration file.")
 
-    args = parser.parse_args()
+        args = parser.parse_args()
+    except argparse.ArgumentTypeError as e:
+        print("ERROR: Argument parser error. " + str(e.message))
+        exit(-1)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir = '/'.join(script_dir.split('/')[:-1])

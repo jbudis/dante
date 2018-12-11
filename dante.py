@@ -5,14 +5,12 @@ import matplotlib
 matplotlib.use('Agg')
 
 import os
-from subprocess import call
 import cProfile
 import pstats
 import multiprocess
 import sys
 from datetime import datetime
 import traceback
-import argparse
 import logging
 
 import arguments
@@ -167,12 +165,10 @@ start_time = datetime.now()
 print(templates.START_TIME.format(start=start_time))
 
 # load arguments
-try:
-    config = arguments.load_arguments()
-except argparse.ArgumentTypeError as e:
-    exit(-1)
+config = arguments.load_arguments()
 
 # start profiling if needed
+prog_prof = None
 PROFILE = config['general']['profiler']
 if PROFILE:
     prog_prof = cProfile.Profile()
@@ -290,7 +286,7 @@ for i, (motif, annot) in enumerate(zip(config['motifs'], annotations)):
         report.log_str("Motif %12s: Generating output files into %s" % (motif['full_name'], motif_dir))
         report.write_all(qual_annot, primer_annot, filt_annot, dedup_ap[i], all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j)
 
-##### All_Call part of DANTE
+# -------- All_Call part of DANTE
 
 # run all_call
 for i, motif in enumerate(config['motifs']):
@@ -346,7 +342,7 @@ for i, motif in enumerate(config['motifs']):
             if isinstance(a2, (int, long)) and a2 != a1 and a2 != 0:
                 report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep - 1, allele=a2)
 
-##### generation of reports and finalizing
+# -------- generation of reports and finalizing
 
 # generate report and output files for whole run
 report.log_str('Generating final report')
