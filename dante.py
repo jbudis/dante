@@ -215,9 +215,9 @@ for input_file in config['inputs']:
     max_reads = None if input_file['max_reads'] == 'all' else input_file['max_reads']
 
     if read_filename == 'sys.stdin':
-        read_file = ReadFile(None, config['general']['stranded'], max_reads, file_type)
+        read_file = ReadFile(None, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'])
     else:
-        read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type)
+        read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'])
 
     report.log_str("Parsing file %s (%s type) with parser %s %s " % (read_filename, read_file.file_type, read_file.__class__.__name__, read_file.reader.__name__))
 

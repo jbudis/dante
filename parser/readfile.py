@@ -115,13 +115,14 @@ class ReadFile:
     SUPPORTED_FORMATS = ('sam', 'bam', 'fasta', 'fastq', 'fasta.gz', 'fastq.gz', 'fa', 'fq', 'fa.gz', 'fq.gz', 'txt')
     STRANDED_TYPES = ('yes', 'both', 'reverse')
 
-    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None):
+    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=1):
         """
         Initilize ReadFile.
         :param file_path: str/None - file path or None if reads come from stdin
         :param maximal_reads: int - read maximal of this number of reads
         :param stranded: 'yes'/'both'/'reverse' - whether to use stranded
         :param file_type: str - file type
+        :param verbosity: int - how verbose are we
         """
         self.file_path = file_path
         self.maximal_reads = maximal_reads
@@ -133,16 +134,17 @@ class ReadFile:
 
         self.distribution = collections.defaultdict(int)
 
-        self.reader = self.load_reader()
+        self.reader = self.load_reader(verbosity)
 
-    def load_reader(self):
+    def load_reader(self, verbosity):
         """
         Return reader according to file type and file path.
+        :param verbosity: int - how verbose are we
         :return: reader object
         """
         readers = {
-            'sam': lambda fn: ReadFile.iter_seqs_bam(fn),
-            'bam': lambda fn: ReadFile.iter_seqs_bam(fn),
+            'sam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
+            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
             'fasta': lambda fn: ReadFile.iter_seqs_fasta(fn, False),
             'fastq': lambda fn: ReadFile.iter_seqs_fastq(fn, False),
             'fasta.gz': lambda fn: ReadFile.iter_seqs_fasta(fn, True),
@@ -208,10 +210,11 @@ class ReadFile:
         return distrib_array[:up_to]
 
     @staticmethod
-    def iter_seqs_bam(file_name):
+    def iter_seqs_bam(file_name, verbosity=1):
         """
         Reader for bam files.
         :param file_name: str - file path to open
+        :param verbosity: int - how verbose are we 0-3
         :return: iterator - reads a bam file iteratively
         """
         if file_name is not None:
@@ -230,7 +233,7 @@ class ReadFile:
                 ref_id = str(read.reference_name)
                 mapq = read.mapping_quality
                 ref_id, left_pair_from_name = extract_pair(ref_id, None)
-                if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair:
+                if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair and verbosity > 0:
                     print("WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s" % (str(read)))
                 if left_pair is None:
                     left_pair = left_pair_from_name
