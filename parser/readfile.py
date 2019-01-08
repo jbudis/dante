@@ -115,7 +115,7 @@ class ReadFile:
     SUPPORTED_FORMATS = ('sam', 'bam', 'fasta', 'fastq', 'fasta.gz', 'fastq.gz', 'fa', 'fq', 'fa.gz', 'fq.gz', 'txt')
     STRANDED_TYPES = ('yes', 'both', 'reverse')
 
-    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=1):
+    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0):
         """
         Initilize ReadFile.
         :param file_path: str/None - file path or None if reads come from stdin
@@ -210,7 +210,7 @@ class ReadFile:
         return distrib_array[:up_to]
 
     @staticmethod
-    def iter_seqs_bam(file_name, verbosity=1):
+    def iter_seqs_bam(file_name, verbosity=0):
         """
         Reader for bam files.
         :param file_name: str - file path to open
@@ -234,7 +234,8 @@ class ReadFile:
                 mapq = read.mapping_quality
                 ref_id, left_pair_from_name = extract_pair(ref_id, None)
                 if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair and verbosity > 0:
-                    print("WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s" % (str(read)))
+                    warn = "WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s" % (str(read))
+                    report.log_str(warn, priority=logging.WARNING)
                 if left_pair is None:
                     left_pair = left_pair_from_name
             except ValueError:

@@ -24,7 +24,7 @@ from annotation import Annotator
 import all_call
 
 
-def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, filtered_reads_prev, filter_on=True):
+def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, filtered_reads_prev, filter_on=True, report_every=100000):
     """
     Runs the annotator iteratively and in parallel on all reads in reader.
     :param reader: iterator - iterative reader
@@ -34,6 +34,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
     :param annotated_read_prev: list(int) - previously annotated reads
     :param filtered_reads_prev: int - previously filtered reads
     :param filter_on: bool - whether the filtering in subprocesses is on
+    :param report_every: int - report progress every this number of reads
     :return: list(2D), int, int - list of annotations for filtered reads, number of annotated reads, number of filtered reads
     """
 
@@ -42,7 +43,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
     filtered_reads = multiprocess.Value('i', filtered_reads_prev)
     lock = multiprocess.Lock()
 
-    def init_pool(l, ar, fr, an, flt, f_on):
+    def init_pool(l, ar, fr, an, flt, f_on, report_num):
         """
         Initializes a pool with variables
         :param l: Lock - shared lock object for all processes
@@ -51,6 +52,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         :param an: Annotators - shared Annotators object for all processes
         :param flt: filter functions - filter functions for pre-filtering reads
         :param f_on: bool - filter is on?
+        :param report_num: int - how often to report progress
         :return: None
         """
         global lock
@@ -59,12 +61,14 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         global annotators
         global filters
         global filter_on
+        global report_number
         lock = l
         annotated_reads = ar
         filtered_reads = fr
         annotators = an
         filters = flt
         filter_on = f_on
+        report_number = report_num
 
         if PROFILE:
             global prof
@@ -96,6 +100,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         global annotators
         global filters
         global filter_on
+        global report_number
 
         try:
             # filter and annotate a read
@@ -120,7 +125,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
             filtered_reads.value += 1
 
             # print progress
-            if filtered_reads.value % 10000 == 0:
+            if report_number > 0 and filtered_reads.value % report_number == 0:
                 lock.acquire()
                 s = "\r    processed: %8d (passed filtering: %s) %s" % (filtered_reads.value, " ".join(map(str, annotated_reads)), '{duration}'.format(duration=datetime.now() - start_time))
                 report.log_str(s, stdout_too=False, priority=logging.DEBUG, flush=True)
@@ -141,7 +146,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         return annotation
 
     # crate pool and initialize it with init_pool
-    pool = multiprocess.Pool(threads, initializer=init_pool, initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on))
+    pool = multiprocess.Pool(threads, initializer=init_pool, initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every))
 
     # run all annotation and return
     res = [[] for _ in range(len(annotators))]
@@ -224,7 +229,8 @@ for input_file in config['inputs']:
     # run annotators
     report.log_str("Running %d annotator(s) on %2d process(es) for file %s" % (len(annotators), config['general']['cpu'], read_filename))
     readers.append(read_file)
-    next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads, all_reads, not config['general']['output_all'])
+    next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads, all_reads,
+                                                                  not config['general']['output_all'], config['general']['report_every'])
     new_reads = cur_reads - all_reads
     all_reads += new_reads
     for i, pr in enumerate(next_annotations):
