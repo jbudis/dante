@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import train
+import all_call.train as train
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects

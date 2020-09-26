@@ -178,7 +178,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     """
     # prepare and generate alignments
     sequence, subpart = highlight_subpart(sequence, highlight)
-    motif = '%s &ndash; %s' % (motif_name, description.encode('utf-8'))
+    motif = '%s &ndash; %s' % (motif_name, description)
     motif_name = '%s_%s' % (motif_name, ','.join(map(str, highlight)) if highlight is not None else 'mot')
     align_html_a1 = ''
     align_html_a2 = ''
@@ -203,9 +203,11 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     # return content and picture parts:
     if repetition is not None:
         reps = base64.b64encode(open(repetition, "rb").read())
+        reps = reps.decode("utf-8")
         align_html = generate_alignment(motif_name, alignment)
         if pcolor is not None:
             pcol = base64.b64encode(open(pcolor, "rb").read())
+            pcol = pcol.decode("utf-8")
             return content_string.format(motif_name=motif_name, motif=motif, sequence=sequence), motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                                                                                                         motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
                                                                                                                         motif_pcolor=pcol, alignment=align_html + align_html_a1 + align_html_a2,

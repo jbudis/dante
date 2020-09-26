@@ -1,5 +1,5 @@
-from itertools import izip
-from state import CODE_GAP
+#from itertools import izip
+from .state import CODE_GAP
 
 
 class Annotation:
@@ -77,7 +77,7 @@ class Annotation:
         :return: tuple(str, str) Input sequence and quality filled with gaps in deletion areas
         """
         seq, qual = [], []
-        for nucleotide, phred, skip in izip(self.read.sequence, self.read.quality, self.skips):
+        for nucleotide, phred, skip in zip(self.read.sequence, self.read.quality, self.skips):
             seq.append(nucleotide)
             qual.append(phred)
             for i in range(len(skip)):

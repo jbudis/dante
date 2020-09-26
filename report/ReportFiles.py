@@ -9,7 +9,7 @@ import numpy as np
 import os
 import pandas as pd
 
-import html_templates
+import report.html_templates as html_templates
 
 # max repetitions on the graph
 MAX_REPETITIONS = 40
@@ -60,9 +60,9 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
     if allele is not None:
 
         if allele2 is not None and index_rep2 is not None:
-            annotations = filter(lambda a: a.module_repetitions[index_rep] == allele and a.module_repetitions[index_rep2] == allele2, annotations)
+            annotations = list(filter(lambda a: a.module_repetitions[index_rep] == allele and a.module_repetitions[index_rep2] == allele2, annotations))
         else:
-            annotations = filter(lambda a: a.module_repetitions[index_rep] == allele, annotations)
+            annotations = list(filter(lambda a: a.module_repetitions[index_rep] == allele, annotations))
 
     alignments = [""] * len(annotations)
     align_inds = np.zeros(len(annotations), dtype=int)
@@ -148,7 +148,7 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
         # print debug info
         print("# debug", file=fw)
         print(''.join(inserts), file=fw)
-        print(''.join(map(lambda x: get_haxadec(x / 10), states)), file=fw)
+        print(''.join(map(lambda x: get_haxadec(int(x / 10)), states)), file=fw)
         print(''.join(map(lambda x: str(x % 10), states)), file=fw)
 
 
@@ -180,6 +180,8 @@ def tuple_sort_key(values):
         max_value *= multi
     return key
 
+    #funkcia nefunguje
+
 
 def sorted_repetitions(annotations):
     """
@@ -188,7 +190,7 @@ def sorted_repetitions(annotations):
     :return: list of (repetitions, count), sorted by repetitions
     """
     count_dict = Counter(tuple(annotation.module_repetitions) for annotation in annotations)
-    return sorted(count_dict.items(), key=lambda (k, v): tuple_sort_key(k))
+    return sorted(count_dict.items(), key=lambda k: tuple_sort_key(k[0]))
 
 
 def write_histogram(out_file, annotations, profile_file=None, index_rep=None):
@@ -210,7 +212,7 @@ def write_histogram(out_file, annotations, profile_file=None, index_rep=None):
 
     # write profile
     if profile_file is not None and index_rep is not None:
-        length = max([0] + map(lambda x: x[0][index_rep], sorted_reps))
+        length = max([0] + list(map(lambda x: x[0][index_rep], sorted_reps)))
         profile = np.zeros(length + 1, dtype=int)
 
         for repetitions, counts in sorted_reps:
@@ -233,8 +235,8 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     if deduplicated is None or len(deduplicated) == 0:
         return
 
-    dedup_reps_i1 = filter(lambda x: x is not None, map(lambda x: x.get_str_repetitions(index_rep), deduplicated))
-    dedup_reps_i2 = filter(lambda x: x is not None, map(lambda x: x.get_str_repetitions(index_rep2), deduplicated))
+    dedup_reps_i1 = list(filter(lambda x: x is not None, map(lambda x: x.get_str_repetitions(index_rep), deduplicated)))
+    dedup_reps_i2 = list(filter(lambda x: x is not None, map(lambda x: x.get_str_repetitions(index_rep2), deduplicated)))
 
     if len(dedup_reps_i1) == 0 or len(dedup_reps_i2) == 0:
         return
@@ -477,19 +479,34 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     :return: pandas.DataFrame - table with all the results
     """
     # write the results into a table in TSV format
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Motif', motif_name)
+    """result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Motif', motif_name)
     result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Sequence', seq)
     result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Repetition index', postfilter['index_rep'])
     result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Postfilter bases', postfilter['bases'])
     result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Postfilter repetitions', postfilter['repetitions'])
     result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (full)', reads_blue)
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (partial)', reads_grey)
+    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (partial)', reads_grey)"""
+
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Motif'] = motif_name
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Sequence'] = seq
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Repetition index'] = postfilter['index_rep']
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Postfilter bases'] = postfilter['bases']
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Postfilter repetitions'] = postfilter['repetitions']
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (full)'] = reads_blue
+    result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (partial)'] = reads_grey
+
     if confidence is not None:
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Overall confidence'] = confidence[0]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 prediction'] = confidence[1]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 prediction'] = confidence[2]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 confidence'] = confidence[3]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 confidence'] = confidence[4]
+        """
         result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Overall confidence', confidence[0])
         result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 prediction', confidence[1])
         result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 prediction', confidence[2])
         result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 confidence', confidence[3])
-        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 confidence', confidence[4])
+        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 confidence', confidence[4])"""
 
     return result_table
 
@@ -563,7 +580,7 @@ def write_report(report_dir, motifs, output_dir):
 
     # save the report file
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    template = open('%s/report.html' % script_dir, 'rb').read()
+    template = open('%s/report.html' % script_dir, 'r').read()
     with open('%s/report.html' % report_dir, 'w') as f:
         f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
 

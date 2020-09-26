@@ -1,5 +1,5 @@
 import regex
-from DummyFilter import DummyFilter
+from .DummyFilter import DummyFilter
 
 
 class RegexFilter(DummyFilter):

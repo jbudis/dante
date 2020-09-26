@@ -1,5 +1,5 @@
 import numpy as np
-import Annotator
+import annotation.Annotator as Annotator
 
 
 class Decoder(object):

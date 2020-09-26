@@ -1,4 +1,4 @@
-from DummyFilter import DummyFilter
+from .DummyFilter import DummyFilter
 
 
 class SimpleFilter(DummyFilter):

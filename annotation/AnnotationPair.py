@@ -1,4 +1,4 @@
-from Annotation import Annotation
+from .Annotation import Annotation
 
 
 def annotations_to_pairs(annotations):

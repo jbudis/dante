@@ -1,6 +1,6 @@
 import pysam
 import gzip
-from string import maketrans
+#from string import maketrans
 import logging
 import report
 import sys
@@ -45,8 +45,6 @@ class Read:
     """
     Class for encapsulating the read object.
     """
-
-    translate_table = maketrans('ACGT', 'TGCA')
 
     def __init__(self, name, sequence, quality=None, map_qual=None, chromosome=None, ref_start=None, ref_end=None, left_pair=None, complement=False):
         """
@@ -101,6 +99,9 @@ class Read:
         Return a reverse complement of this read.
         :return: Read - reversed read
         """
+
+        self.translate_table = self.sequence.maketrans('ACGT', 'TGCA')
+
         reversed_sequence = self.sequence[::-1].translate(self.translate_table)
         reversed_quality = self.quality[::-1]
         return Read(self.name, reversed_sequence, reversed_quality, self.map_qual, chromosome=self.chromosome, ref_start=self.ref_start, ref_end=self.ref_end,
@@ -217,6 +218,8 @@ class ReadFile:
         :param verbosity: int - how verbose are we 0-3
         :return: iterator - reads a bam file iteratively
         """
+
+        #treba zmenit na "r", ale nie som si isty ci to bude spravne fungovat
         if file_name is not None:
             bam = pysam.AlignmentFile(file_name, "rb")
         else:
@@ -271,6 +274,8 @@ class ReadFile:
         sequence = ""
         left_pair_cur = None
         for i, line in enumerate(reads):
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
             if i % 4 == 0:
                 rid = line.strip()[1:]
                 rid, left_pair_cur = extract_pair(rid, left_pair)
@@ -304,6 +309,8 @@ class ReadFile:
         seq, rid = '', None
         left_pair_cur = None
         for line in reads:
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
             if line[0] == '>':
                 if seq:
                     yield Read(rid, seq, left_pair=left_pair_cur)
@@ -331,6 +338,8 @@ class ReadFile:
         left_pair = None
         complement = False
         for i, line in enumerate(reads):
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
             if line[0] == '>':
                 rid = line[1:].strip()
                 rid, left_pair = extract_pair(rid)

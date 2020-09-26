@@ -9,7 +9,7 @@ import report
 import logging
 from annotation import MOTIF_NUCLEOTIDES
 
-import yaml_reader
+import arguments.yaml_reader as yaml_reader
 
 FILTER_TYPES = ("DummyFilter", "RegexFilter", "LevenshteinFilter", "SimpleFilter")
 
@@ -159,7 +159,7 @@ def check_arguments(args):
 
     # check if all the: motif, filter, levensh-devs, required-bases, and required-repetitions have the same number:
     length_motif = len(args.motif)
-    first_motif = ",".join(map(lambda (s, r): s if r == 1 else "%d-%s" % (r, s), args.motif))
+    first_motif = ",".join(map(lambda s, r: s if r == 1 else "%d-%s" % (r, s), args.motif))
     vals_others = [args.filter, args.levensh_devs, args.required_bases, args.required_repetitions]
     names_others = ["--filter", "--levensh-devs", "--required-bases", "--required_repetitions"]
     for n, v in zip(names_others, vals_others):
@@ -179,7 +179,7 @@ def multiple_positive_ints(value, max_limit=None):
     :return: list of decoded percents
     """
     items = value.split(',')
-    return map(lambda x: positive_int(x, max_limit), items)
+    return list(map(lambda x: positive_int(x, max_limit), items))
 
 
 def multiple_percents(value):

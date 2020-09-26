@@ -223,7 +223,7 @@ class Inference:
         with open(params_file) as f:
             lines = f.readlines()
             fit_function = lines[1].strip().split()[1]
-            split = map(float, lines[-1].strip().split())
+            split = list(map(float, lines[-1].strip().split()))
 
         if len(split) < 4:
             print("ERROR: parameters were not read successfully, using defaults!", file=sys.stderr)
@@ -366,13 +366,13 @@ class Inference:
         :return: dict(tuple(int, int):float) - directory of model indices to their likelihood
         """
         # generate closed observed and read_length arrays
-        observed_annots = map(lambda x: x.module_repetitions[index_rep], annotations)
-        rl_annots = map(lambda x: len(x.read.sequence), annotations)
+        observed_annots = list(map(lambda x: x.module_repetitions[index_rep], annotations))
+        rl_annots = list(map(lambda x: len(x.read.sequence), annotations))
         closed_annots = np.ones_like(observed_annots, dtype=bool)
 
         # generate open observed and read_length arrays
-        observed_fa = map(lambda x: x.module_repetitions[index_rep], filt_annotations)
-        rl_fa = map(lambda x: len(x.read.sequence), filt_annotations)
+        observed_fa = list(map(lambda x: x.module_repetitions[index_rep], filt_annotations))
+        rl_fa = list(map(lambda x: len(x.read.sequence), filt_annotations))
         closed_fa = np.zeros_like(observed_fa, dtype=bool)
 
         # join them and keep the information if they are open or closed
@@ -516,7 +516,7 @@ class Inference:
         if best[0] == 0 and best[1] == 0:
             best_sym = ('B', 'B')
         else:
-            best_sym = map(lambda x: 'E' if x == self.max_rep or x == 0 else x, best)
+            best_sym = list(map(lambda x: 'E' if x == self.max_rep or x == 0 else x, best))
 
         return lh_array, best, best_sym
 

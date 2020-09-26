@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-import train
+import all_call.train as train
 import numpy as np
 import json
 import sys
@@ -183,7 +183,7 @@ def merge_profiles(profiles, output_file):
 
         # write to aggregated file:
         current = pd.read_csv(profile, sep='\t', header=None, names=['index'] + range(max_cols), index_col=0, parse_dates=True, engine='python')
-        current.index = map(lambda x: '%s_%s' % (name, x), current.index)
+        current.index = list(map(lambda x: '%s_%s' % (name, x), current.index))
         all_profiles = pd.concat([all_profiles, current])
 
     # fill not available data:
@@ -335,7 +335,7 @@ def read_params(filename):
     with open(filename) as f:
         lines = f.readlines()
         fit_function = lines[1].strip().split()[1]
-        split = map(float, lines[-1].strip().split())
+        split = list(map(float, lines[-1].strip().split()))
 
     if len(split) < 8:
         print("ERROR: parameters were not read successfully, using defaults!", file=sys.stderr)

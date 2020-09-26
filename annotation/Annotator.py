@@ -1,13 +1,13 @@
-import Decoder
+import annotation.Decoder as Decoder
 import numpy as np
-import state
-from Annotation import Annotation
-from itertools import izip
+import annotation.state as state
+from .Annotation import Annotation
+#from itertools import izip
 import report
 
 QUAL_BEG = 33
 QUAL_END = 127
-QUALITY_CODES = map(chr, range(QUAL_BEG, QUAL_END))
+QUALITY_CODES = list(map(chr, range(QUAL_BEG, QUAL_END)))
 QUALITY_NUMS = range(QUAL_END - QUAL_BEG)
 NUCLEOTIDES = ['A', 'C', 'G', 'T', 'N']
 MOTIF_NUCLEOTIDES = ['A', 'C', 'G', 'T', 'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B', 'X', 'N']
@@ -413,11 +413,11 @@ class Annotator:
         :return: Highest probability of generating sequence with HMM states,
                  annotation for the input sequence in a string representation
         """
-        seq = map(code_base, read.sequence)
-        qual = map(quality_index, read.quality)
+        seq = list(map(code_base, read.sequence))
+        qual = list(map(quality_index, read.quality))
         probability, predicted_states = self.decoder.decode_log(seq, qual)
         state_seq = [self.states[i] for i in predicted_states]
         skips = [self.deleted_states.get((i, j), []) for i, j in
-                 izip(predicted_states, predicted_states[1:])]
+                 zip(predicted_states, predicted_states[1:])]
         annotation = Annotation(read, state_seq, skips, probability, self.motif)
         return annotation
