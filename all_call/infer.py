@@ -1,6 +1,4 @@
-from __future__ import print_function
-
-import all_call.train as train
+import all_call.train
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
@@ -99,8 +97,8 @@ def combine_models(i, j, model_tmp, read_drop_params, minimal_prob, minimal_weig
         model_j = model_tmp(j)
 
         # get weights
-        weight_i = train.linear_rate(i * len_repeating, *read_drop_params)
-        weight_j = train.linear_rate(j * len_repeating, *read_drop_params)
+        weight_i = all_call.train.linear_rate(i * len_repeating, *read_drop_params)
+        weight_j = all_call.train.linear_rate(j * len_repeating, *read_drop_params)
 
         sum_w = weight_i + weight_j
         weight_i /= sum_w
@@ -143,19 +141,19 @@ def generate_likelihoods(profile, model_params, fit_function, read_drop_params, 
     num_models = 0
 
     # crete model template
-    model_tmp = train.model_template(np.arange(max_str), model_params, fit_function)
+    model_tmp = all_call.train.model_template(np.arange(max_str), model_params, fit_function)
 
     # compute likelihoods for all 2 allele options
     for i in range(min_str, max_str):
         for j in range(i, max_str):
             model_ij = combine_models(i, j, model_tmp, read_drop_params, minimal_prob, minimal_weight, len_repeating=len_repeating)
-            lh_array[i, j] = train.likelihood_multinomial(model_ij, profile)
+            lh_array[i, j] = all_call.train.likelihood_multinomial(model_ij, profile)
             num_models += 1
 
     # compute likelihood with no alleles (background)
     if background_prior is None:
         background_prior = num_models
-    lh_array[0, 0] = min(train.likelihood_multinomial(np.ones_like(model_ij, dtype=float) / len(model_ij), profile) + np.log(background_prior), -0.000001)
+    lh_array[0, 0] = min(all_call.train.likelihood_multinomial(np.ones_like(model_ij, dtype=float) / len(model_ij), profile) + np.log(background_prior), -0.000001)
 
     return lh_array
 

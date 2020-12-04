@@ -1,9 +1,9 @@
-from .DummyFilter import DummyFilter
-from .RegexFilter import RegexFilter
-from .LevenshteinFilter import LevenshteinFilter
-from .SimpleFilter import SimpleFilter
-from .BamFilter import BamFilter
-from .MultiFilter import MultiFilter
+from prefiltering.DummyFilter import DummyFilter
+from prefiltering.RegexFilter import RegexFilter
+from prefiltering.LevenshteinFilter import LevenshteinFilter
+from prefiltering.SimpleFilter import SimpleFilter
+from prefiltering.BamFilter import BamFilter
+from prefiltering.MultiFilter import MultiFilter
 
 import report
 

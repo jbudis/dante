@@ -1,1 +1,1 @@
-from .Postfilter import Postfilter
+from postfilter.Postfilter import Postfilter

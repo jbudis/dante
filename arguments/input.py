@@ -9,7 +9,7 @@ import report
 import logging
 from annotation import MOTIF_NUCLEOTIDES
 
-import arguments.yaml_reader as yaml_reader
+import arguments.yaml_reader
 
 FILTER_TYPES = ("DummyFilter", "RegexFilter", "LevenshteinFilter", "SimpleFilter")
 
@@ -49,8 +49,8 @@ def load_arguments():
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir = '/'.join(script_dir.split('/')[:-1])
-    config = yaml_reader.load_arguments(args.config_file)
-    defaults = yaml_reader.load_arguments('%s/input_data/default.yaml' % script_dir)
+    config = arguments.yaml_reader.load_arguments(args.config_file)
+    defaults = arguments.yaml_reader.load_arguments('%s/input_data/default.yaml' % script_dir)
 
     if config is None:
         print('ERROR: Failed to load config file %s' % args.config_file)
@@ -65,10 +65,10 @@ def load_arguments():
         #basename = args.config_file.split('/')[-1]
         basename = 'config.yaml'
         config_output = '%s/%s' % (config['general']['output_dir'], basename)
-        yaml_reader.save_arguments(config, config_output)
-        yaml_reader.add_defaults(config, defaults)
-        yaml_reader.save_arguments(config, change_suffix(config_output, "_with_defaults.yaml"))
-    except yaml_reader.ParameterException as e:
+        arguments.yaml_reader.save_arguments(config, config_output)
+        arguments.yaml_reader.add_defaults(config, defaults)
+        arguments.yaml_reader.save_arguments(config, change_suffix(config_output, "_with_defaults.yaml"))
+    except arguments.yaml_reader.ParameterException as e:
         print("ParameterException: '%s'" % e.message)
         exit(-1)
 

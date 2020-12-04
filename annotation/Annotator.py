@@ -1,8 +1,7 @@
-import annotation.Decoder as Decoder
+import annotation.Decoder
 import numpy as np
-import annotation.state as state
-from .Annotation import Annotation
-#from itertools import izip
+import annotation.state
+from annotation.Annotation import Annotation
 import report
 
 QUAL_BEG = 33
@@ -149,7 +148,7 @@ class Annotator:
         :param repeats: number of sequence repetitions, 1 for primers
         """
         is_motif = repeats > 1
-        state_constructor = state.MotifState if is_motif else state.SequenceState
+        state_constructor = annotation.state.MotifState if is_motif else annotation.state.SequenceState
         code = (len(self.states), len(self.states) + len(sequence) - 1, repeats)
         self.parts.append(code)
         if is_motif:
@@ -230,7 +229,7 @@ class Annotator:
         for key_state in range(1, len(self.states) - 2):
             insert_state = len(self.states)
             module_id = self.states[key_state].module_id
-            self.__add_state(state.InsertState(self.background_frequency, module_id, len(self.states)))
+            self.__add_state(annotation.state.InsertState(self.background_frequency, module_id, len(self.states)))
             self.__connect(key_state, insert_state, self.insert_prob)  # go to insert state
             ends = [self.repeats[j][1] for j in range(len(self.repeats))]
             if key_state in ends:
@@ -396,14 +395,14 @@ class Annotator:
         """
         Create states and edges of the HMM based on motif code defined by user
         """
-        self.__add_state(state.BackgroundState(self.background_frequency, len(self.states)))
+        self.__add_state(annotation.state.BackgroundState(self.background_frequency, len(self.states)))
         for module_id, (sequence, repeats) in enumerate(self.motif):
             self.__add_sequence(sequence, repeats, module_id)
-        self.__add_state(state.BackgroundState(self.background_frequency, len(self.states)))
+        self.__add_state(annotation.state.BackgroundState(self.background_frequency, len(self.states)))
         self.__connect_states()
         self.__calculate_initial()
         self.__transform_into_decoder_format()
-        self.decoder = Decoder.Decoder(self.initial_np, self.trans_np, self.emit_np)
+        self.decoder = annotation.Decoder.Decoder(self.initial_np, self.trans_np, self.emit_np)
 
     def annotate(self, read):
         """

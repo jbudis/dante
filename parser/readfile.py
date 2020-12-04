@@ -1,6 +1,5 @@
 import pysam
 import gzip
-#from string import maketrans
 import logging
 import report
 import sys
@@ -45,7 +44,9 @@ class Read:
     """
     Class for encapsulating the read object.
     """
-
+    
+    translate_table = str.maketrans('ACGT', 'TGCA')    
+    
     def __init__(self, name, sequence, quality=None, map_qual=None, chromosome=None, ref_start=None, ref_end=None, left_pair=None, complement=False):
         """
         Initialie the Read object
@@ -100,7 +101,7 @@ class Read:
         :return: Read - reversed read
         """
 
-        self.translate_table = self.sequence.maketrans('ACGT', 'TGCA')
+        #self.translate_table = self.sequence.maketrans('ACGT', 'TGCA')
 
         reversed_sequence = self.sequence[::-1].translate(self.translate_table)
         reversed_quality = self.quality[::-1]
@@ -221,9 +222,9 @@ class ReadFile:
 
         #treba zmenit na "r", ale nie som si isty ci to bude spravne fungovat
         if file_name is not None:
-            bam = pysam.AlignmentFile(file_name, "rb")
+            bam = pysam.AlignmentFile(file_name, "r")
         else:
-            bam = pysam.AlignmentFile(sys.stdin, "rb")
+            bam = pysam.AlignmentFile(sys.stdin, "r")
 
         for read in bam:
             # print("Read produced:", read.qname, str(read.seq), read.qual, read.mapping_quality, str(read.chromosome), read.ref_start, read.ref_end)

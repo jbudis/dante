@@ -1,5 +1,4 @@
-#from itertools import izip
-from .state import CODE_GAP
+from annotation.state import CODE_GAP
 
 
 class Annotation:

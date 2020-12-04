@@ -1,4 +1,4 @@
-from .DummyFilter import DummyFilter
+from prefiltering.DummyFilter import DummyFilter
 
 
 class MultiFilter(DummyFilter):

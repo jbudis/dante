@@ -1,11 +1,8 @@
-from __future__ import print_function
-
 import math
 import functools
 from scipy.stats import binom
 import numpy as np
 import itertools
-# from annotation import Annotation
 import sys
 
 import matplotlib.pyplot as plt

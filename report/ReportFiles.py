@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import templates
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -9,7 +7,7 @@ import numpy as np
 import os
 import pandas as pd
 
-import report.html_templates as html_templates
+import report.html_templates
 
 # max repetitions on the graph
 MAX_REPETITIONS = 40
@@ -179,8 +177,6 @@ def tuple_sort_key(values):
         key += multi + value
         max_value *= multi
     return key
-
-    #funkcia nefunguje
 
 
 def sorted_repetitions(annotations):
@@ -557,8 +553,8 @@ def write_report(report_dir, motifs, output_dir):
                 highlight = [postfilter['index_rep'] - 1]
                 if postfilter['index_rep2'] != 'no':
                     highlight.append(postfilter['index_rep2'] - 1)
-                row = html_templates.generate_row(motif_name, seq, confidence, postfilter, reads_blue, reads_grey, highlight=highlight)
-                mc, m = html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
+                row = report.html_templates.generate_row(motif_name, seq, confidence, postfilter, reads_blue, reads_grey, highlight=highlight)
+                mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
 
                 mcs.append(mc)
                 ms.append(m)
