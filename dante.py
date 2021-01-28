@@ -147,6 +147,7 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
 
     # crate pool and initialize it with init_pool
     pool = multiprocess.Pool(threads, initializer=init_pool, initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every))
+    report.log_str("Threads initialized, processing reads...")
 
     # run all annotation and return
     res = [[] for _ in range(len(annotators))]

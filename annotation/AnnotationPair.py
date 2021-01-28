@@ -77,7 +77,7 @@ def pairs_to_annotations_pick(annotation_pairs, index_str):
     return annotations
 
 
-def remove_pcr_duplicates(annot_pairs):
+def remove_pcr_duplicates(annot_pairs):  # TODO make this faster/parallelize - takes too long when number of found reads is more than 10.000-100.000 (1min at 7.500, 4h at 400.000)
     """
     Remove PCR duplicates -- deduplicate the annotation pair list.
     :param annot_pairs: list(AnnotationPair) - list of Annotation Pairs

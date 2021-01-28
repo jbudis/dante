@@ -35,7 +35,7 @@ class Decoder(object):
             """
             return np.array([item[0][asc] if isinstance(item[0], dict) else item[0] for item in obs_prob[:, obs, None]])
 
-        # create the emmision probablity matrix (length=NUCLxQUALxN)
+        # create the emission probability matrix (length=NUCLxQUALxN)
         self.obs_prob = np.zeros((obs_prob_dict.shape[1], Annotator.N_QUALITY_CODES, self.num_states))  # nucleotides * quality * num_states
         for i in range(obs_prob_dict.shape[1]):
             for j in Annotator.QUALITY_NUMS:

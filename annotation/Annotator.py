@@ -339,6 +339,7 @@ class Annotator:
             self.initial[state] = self.motif_frequency
         # background takes the rest:
         self.initial[backg_state] = 1 - self.motif_frequency * len(motif_states)
+        assert self.initial[backg_state] >= 0.0, "Background state has negative probability, increase 'annotation:motif_frequency' value."
 
     def __create_initial(self):
         """

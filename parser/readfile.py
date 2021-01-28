@@ -36,7 +36,7 @@ def extract_pair(read_id, previous_left_pair=None):
 
     if left_pair is not None:
         if previous_left_pair is not None:
-            assert previous_left_pair == left_pair
+            assert previous_left_pair == left_pair, 'previous_left_pair is %s but left_pair is %s (%s)' % (previous_left_pair, left_pair, read_id)
 
     return read_id, left_pair
 
@@ -255,9 +255,9 @@ class ReadFile:
         """
         left_pair = None
         if file_name is not None:
-            if 'R1' in file_name:
+            if '_R1.' in file_name:
                 left_pair = True
-            if 'R2' in file_name:
+            if '_R2.' in file_name:
                 left_pair = False
 
         # log the pair info
