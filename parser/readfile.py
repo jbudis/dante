@@ -117,7 +117,7 @@ class ReadFile:
     SUPPORTED_FORMATS = ('sam', 'bam', 'fasta', 'fastq', 'fasta.gz', 'fastq.gz', 'fa', 'fq', 'fa.gz', 'fq.gz', 'txt')
     STRANDED_TYPES = ('yes', 'both', 'reverse')
 
-    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0):
+    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0, chromosome=None, ref_start=None, ref_end=None, unmapped=False):
         """
         Initilize ReadFile.
         :param file_path: str/None - file path or None if reads come from stdin
@@ -135,10 +135,10 @@ class ReadFile:
         self.iter_reversed = stranded in ['reverse', 'both']
 
         self.distribution = collections.defaultdict(int)
+        
+        self.reader = self.load_reader(verbosity, chromosome, ref_start, ref_end, unmapped)
 
-        self.reader = self.load_reader(verbosity)
-
-    def load_reader(self, verbosity):
+    def load_reader(self, verbosity, chromosome=None, ref_start=None, ref_end=None, unmapped=False):
         """
         Return reader according to file type and file path.
         :param verbosity: int - how verbose are we
@@ -146,7 +146,7 @@ class ReadFile:
         """
         readers = {
             'sam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
-            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
+            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity, chromosome, ref_start, ref_end, unmapped),
             'fasta': lambda fn: ReadFile.iter_seqs_fasta(fn, False),
             'fastq': lambda fn: ReadFile.iter_seqs_fastq(fn, False),
             'fasta.gz': lambda fn: ReadFile.iter_seqs_fasta(fn, True),
@@ -212,7 +212,7 @@ class ReadFile:
         return distrib_array[:up_to]
 
     @staticmethod
-    def iter_seqs_bam(file_name, verbosity=0):
+    def iter_seqs_bam(file_name, verbosity=0, chromosome=None, pos_start=None, pos_end=None, unmapped=False):
         """
         Reader for bam files.
         :param file_name: str - file path to open
@@ -220,14 +220,23 @@ class ReadFile:
         :return: iterator - reads a bam file iteratively
         """
 
-        #treba zmenit na "r", ale nie som si isty ci to bude spravne fungovat
         if file_name is not None:
-            bam = pysam.AlignmentFile(file_name, "r")
+            bam = pysam.AlignmentFile(file_name, "rb")
         else:
-            bam = pysam.AlignmentFile(sys.stdin, "r")
-
-        for read in bam:
-            # print("Read produced:", read.qname, str(read.seq), read.qual, read.mapping_quality, str(read.chromosome), read.ref_start, read.ref_end)
+            bam = pysam.AlignmentFile(sys.stdin, "rb") 
+        
+        if chromosome is not None and pos_start is not None and pos_end is not None:
+            try:
+                region = bam.fetch(chromosome, pos_start, pos_end)
+            except ValueError:
+                print("Detected BAM file %s without index, please sort and index with 'samtools sort' and 'samtools index'." %(file_name))
+                sys.exit()
+        else:
+            region = bam
+            
+        for read in region:
+            if unmapped and not read.is_unmapped:
+                continue
             left_pair = None
             if read.is_paired:
                 left_pair = read.is_read1
@@ -245,10 +254,11 @@ class ReadFile:
             except ValueError:
                 # unaligned read?
                 ref_start = ref_end = ref_id = mapq = None
-
+                
             yield Read(read.qname, str(read.seq), read.qual, mapq, ref_id, ref_start, ref_end, left_pair=left_pair)
         bam.close()
-
+       
+        
     @staticmethod
     def iter_seqs_fastq(file_name, is_gzipped):
         """
@@ -259,9 +269,9 @@ class ReadFile:
         """
         left_pair = None
         if file_name is not None:
-            if 'R1' in file_name:
+            if '_R1' in file_name:
                 left_pair = True
-            if 'R2' in file_name:
+            if '_R2' in file_name:
                 left_pair = False
 
         # log the pair info

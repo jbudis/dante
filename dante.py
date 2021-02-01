@@ -213,31 +213,68 @@ annotations = [[] for _ in range(len(annotators))]
 annotated_reads = [0] * len(annotations)
 readers = []
 for input_file in config['inputs']:
-
+    
     # initialize reader
     read_filename = input_file['path']
     file_type = None if input_file['filetype'] == 'infer' else input_file['filetype']
     max_reads = None if input_file['max_reads'] == 'all' else input_file['max_reads']
-
-    if read_filename == 'sys.stdin':
-        read_file = ReadFile(None, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'])
-    else:
-        read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'])
-
-    report.log_str("Parsing file %s (%s type) with parser %s %s " % (read_filename, read_file.file_type, read_file.__class__.__name__, read_file.reader.__name__))
-
-    # run annotators
-    report.log_str("Running %d annotator(s) on %2d process(es) for file %s" % (len(annotators), config['general']['cpu'], read_filename))
-    readers.append(read_file)
-    next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads, all_reads,
+    
+    if config['general']['bam']:
+        for i, motif in enumerate(config['motifs']):
+            read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, config['general']['verbosity'], motif['prefilter']['chromosome'], motif['prefilter']['ref_start'], motif['prefilter']['ref_end'])
+            
+            report.log_str("Parsing file %s (%s type) with parser %s %s " % (read_filename, read_file.file_type, read_file.__class__.__name__, read_file.reader.__name__))
+            
+            readers.append(read_file)
+            
+            annot = [annotators[i]]
+            filt = [filters[i]]
+            
+            next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annot, filt, config['general']['cpu'], annotated_reads, all_reads,
                                                                   not config['general']['output_all'], config['general']['report_every'])
-    new_reads = cur_reads - all_reads
-    all_reads += new_reads
-    for i, pr in enumerate(next_annotations):
-        annotations[i].extend(pr)
-
-    # write stats for current file
-    report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
+            new_reads = cur_reads - all_reads
+            all_reads += new_reads
+                        
+            annotations[i].extend(next_annotations[0])
+            
+            report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
+        
+        if input_file['unmapped']:
+            read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'], unmapped=True)
+            
+            # run annotators
+            report.log_str("Running %d annotator(s) on %2d process(es) for file %s" % (len(annotators), config['general']['cpu'], read_filename))
+            readers.append(read_file)
+            next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads, all_reads,
+                                                                          not config['general']['output_all'], config['general']['report_every'])
+            new_reads = cur_reads - all_reads
+            all_reads += new_reads
+            for i, pr in enumerate(next_annotations):
+                annotations[i].extend(pr)
+        
+            # write stats for current file
+            report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
+            
+    else:
+        if read_filename == 'sys.stdin':
+            read_file = ReadFile(None, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'])
+        else:
+            read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'])
+    
+        report.log_str("Parsing file %s (%s type) with parser %s %s " % (read_filename, read_file.file_type, read_file.__class__.__name__, read_file.reader.__name__))
+    
+        # run annotators
+        report.log_str("Running %d annotator(s) on %2d process(es) for file %s" % (len(annotators), config['general']['cpu'], read_filename))
+        readers.append(read_file)
+        next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads, all_reads,
+                                                                      not config['general']['output_all'], config['general']['report_every'])
+        new_reads = cur_reads - all_reads
+        all_reads += new_reads
+        for i, pr in enumerate(next_annotations):
+            annotations[i].extend(pr)
+    
+        # write stats for current file
+        report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
 
 # write read distribution
 report.write_read_distribution('%s/read_distr.npy' % config['general']['output_dir'], readers)
