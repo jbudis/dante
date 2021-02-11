@@ -1,5 +1,6 @@
 from annotation.Annotation import Annotation
-
+from operator import attrgetter
+from datetime import datetime
 
 def annotations_to_pairs(annotations):
     """
@@ -83,22 +84,72 @@ def remove_pcr_duplicates(annot_pairs):
     :param annot_pairs: list(AnnotationPair) - list of Annotation Pairs
     :return: list(AnnotationPair), list(AnnotationPair) - deduplicated list and duplications
     """
-    deduplicated = []
-    duplicates = []
-    for ap in annot_pairs:
-        written = False
-        for i, dedup in enumerate(deduplicated):
-            if dedup == ap:
-                if ap.more_info_than(dedup):
-                    duplicates.append(dedup)
-                    deduplicated[i] = ap
-                else:
-                    duplicates.append(ap)
-                written = True
-                break
-        if not written:
-            deduplicated.append(ap)
+    def remove_none_2(ann_pairs):
+        arr = []
+        for ap in ann_pairs:
+            if ap.ann2 is not None:
+                arr.append(ap)
+                
+        return arr
 
+    def remove_none_1(ann_pairs):
+        arr = []
+        for ap in ann_pairs:
+            if ap.ann1 is not None:
+                arr.append(ap)
+                
+        return arr
+
+    def deduplicate(ann_pairs):
+        dedup = []
+        duplic = []
+    
+        stop = len(ann_pairs)
+        i = 0
+        j = 1
+                    
+        while j < stop:
+            if ann_pairs[i] == ann_pairs[j]:
+                if ann_pairs[i].more_info_than(ann_pairs[j]):
+                    duplic.append(ann_pairs[j])
+                else:
+                    duplic.append(ann_pairs[i])
+                    i = j
+            else:
+                dedup.append(ann_pairs[i])
+                i = j
+            if j + 1 == stop:
+                dedup.append(ann_pairs[i])
+            j += 1
+            
+        return dedup, duplic
+    
+    # print('Start deduplicating process ', datetime.now())
+    
+    a_pairs = remove_none_1(annot_pairs)
+    
+    a_pairs = sorted(a_pairs, key=attrgetter('ann1.read.sequence'))
+    
+    deduplicated1, duplicates = deduplicate(a_pairs)
+    
+    a_pairs2 = remove_none_2(deduplicated1)
+    
+    for ap in annot_pairs:
+        if ap.ann1 is None:
+            a_pairs2.append(ap)
+           
+    a_pairs2 = sorted(a_pairs2, key=lambda ann: ann.ann2.read.sequence[::-1])
+
+    deduplicated, duplicates2 = deduplicate(a_pairs2)
+        
+    for ap in deduplicated1:
+        if ap.ann2 is None:
+            deduplicated.append(ap)
+    
+    duplicates.extend(duplicates2)
+
+    # print('Deduplicating process finished', datetime.now())
+    
     return deduplicated, duplicates
 
 

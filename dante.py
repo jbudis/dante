@@ -239,7 +239,7 @@ for input_file in config['inputs']:
             
             report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
         
-        if input_file['unmapped']:
+        if config['general']['include_unmapped']:
             read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'], unmapped=True)
             
             # run annotators
