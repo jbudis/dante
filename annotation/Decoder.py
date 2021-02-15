@@ -66,4 +66,3 @@ class Decoder(object):
 
         # return likelihood and best states
         return np.exp(np.max(trellis[-1, :])), best_states[::-1]
-

@@ -58,9 +58,9 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
     if allele is not None:
 
         if allele2 is not None and index_rep2 is not None:
-            annotations = list(filter(lambda a: a.module_repetitions[index_rep] == allele and a.module_repetitions[index_rep2] == allele2, annotations))
+            annotations = [a for a in annotations if a.module_repetitions[index_rep] == allele and a.module_repetitions[index_rep2] == allele2]
         else:
-            annotations = list(filter(lambda a: a.module_repetitions[index_rep] == allele, annotations))
+            annotations = [a for a in annotations if a.module_repetitions[index_rep] == allele]
 
     alignments = [""] * len(annotations)
     align_inds = np.zeros(len(annotations), dtype=int)
@@ -208,7 +208,7 @@ def write_histogram(out_file, annotations, profile_file=None, index_rep=None):
 
     # write profile
     if profile_file is not None and index_rep is not None:
-        length = max([0] + list(map(lambda x: x[0][index_rep], sorted_reps)))
+        length = max([0] + [x[0][index_rep] for x in sorted_reps])
         profile = np.zeros(length + 1, dtype=int)
 
         for repetitions, counts in sorted_reps:
@@ -231,8 +231,8 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     if deduplicated is None or len(deduplicated) == 0:
         return
 
-    dedup_reps_i1 = list(filter(lambda x: x is not None, map(lambda x: x.get_str_repetitions(index_rep), deduplicated)))
-    dedup_reps_i2 = list(filter(lambda x: x is not None, map(lambda x: x.get_str_repetitions(index_rep2), deduplicated)))
+    dedup_reps_i1 = [x.get_str_repetitions(index_rep) for x in deduplicated if x.get_str_repetitions(index_rep) is not None]
+    dedup_reps_i2 = [x.get_str_repetitions(index_rep2) for x in deduplicated if x.get_str_repetitions(index_rep2) is not None]
 
     if len(dedup_reps_i1) == 0 or len(dedup_reps_i2) == 0:
         return
@@ -475,14 +475,6 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     :return: pandas.DataFrame - table with all the results
     """
     # write the results into a table in TSV format
-    """result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Motif', motif_name)
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Sequence', seq)
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Repetition index', postfilter['index_rep'])
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Postfilter bases', postfilter['bases'])
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Postfilter repetitions', postfilter['repetitions'])
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (full)', reads_blue)
-    result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Reads (partial)', reads_grey)"""
-
     result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Motif'] = motif_name
     result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Sequence'] = seq
     result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Repetition index'] = postfilter['index_rep']
@@ -497,12 +489,6 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
         result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 prediction'] = confidence[2]
         result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 confidence'] = confidence[3]
         result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 confidence'] = confidence[4]
-        """
-        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Overall confidence', confidence[0])
-        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 prediction', confidence[1])
-        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 prediction', confidence[2])
-        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 confidence', confidence[3])
-        result_table.set_value('%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 confidence', confidence[4])"""
 
     return result_table
 

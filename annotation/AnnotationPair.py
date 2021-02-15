@@ -84,21 +84,21 @@ def remove_pcr_duplicates(annot_pairs):
     :param annot_pairs: list(AnnotationPair) - list of Annotation Pairs
     :return: list(AnnotationPair), list(AnnotationPair) - deduplicated list and duplications
     """
-    def remove_none_2(ann_pairs):
+    def remove_none(ann_pairs: list, first: bool = True) -> list:
+        """
+        Remove annotation pairs with None first (second) annotation from the pair.
+        :param ann_pairs: list(AnnotationPair) - list of Annotation Pairs
+        :param first: bool - look at the first annotation from the pair?
+        :return: list(AnnotationPair) - list of Annotation Pairs without None pairs
+        """
         arr = []
         for ap in ann_pairs:
-            if ap.ann2 is not None:
+            if first and ap.ann1 is not None:
                 arr.append(ap)
-                
+            if not first and ap.ann2 is not None:
+                arr.append(ap)
         return arr
 
-    def remove_none_1(ann_pairs):
-        arr = []
-        for ap in ann_pairs:
-            if ap.ann1 is not None:
-                arr.append(ap)
-                
-        return arr
 
     def deduplicate(ann_pairs):
         dedup = []
@@ -126,13 +126,13 @@ def remove_pcr_duplicates(annot_pairs):
     
     # print('Start deduplicating process ', datetime.now())
     
-    a_pairs = remove_none_1(annot_pairs)
+    a_pairs = remove_none(annot_pairs, True)
     
     a_pairs = sorted(a_pairs, key=attrgetter('ann1.read.sequence'))
     
     deduplicated1, duplicates = deduplicate(a_pairs)
     
-    a_pairs2 = remove_none_2(deduplicated1)
+    a_pairs2 = remove_none(deduplicated1, False)
     
     for ap in annot_pairs:
         if ap.ann1 is None:

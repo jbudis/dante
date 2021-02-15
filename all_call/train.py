@@ -253,7 +253,7 @@ def linear_rate(n, p1=0.0, p2=1.0, p3=1.0):
     return p1 + p2 * n
 
 
-def relative_read_drop_train_linear(a1, a2, p1=0.0, p2=1.0, p3=1.0):
+def relative_read_drop_train_linear(a, p1=0.0, p2=1.0, p3=1.0):
     """
     Ratio of linear functions for relative read drop quantification.
     :param a: (list(int), list(int)) - allele numbers
@@ -261,6 +261,7 @@ def relative_read_drop_train_linear(a1, a2, p1=0.0, p2=1.0, p3=1.0):
     :param p2: float - linear parameter
     :return: float - ratio of the two linear functions
     """
+    a1, a2 = a
     return np.array([linear_rate(aa1, p1, p2) / linear_rate(aa2, p1, p2) for aa1, aa2 in zip(a1, a2)])
 
 

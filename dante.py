@@ -1,5 +1,3 @@
-from __future__ import print_function, division
-
 import matplotlib
 
 matplotlib.use('Agg')
@@ -380,9 +378,9 @@ for i, motif in enumerate(config['motifs']):
         confidence = report.read_all_call('%s/allcall_%d.txt' % (motif_dir, j + 1))
         if confidence is not None:
             conf, a1, a2, c1, c2 = confidence
-            if isinstance(a1, (int, int)) and a1 > 0:
+            if isinstance(a1, int) and a1 > 0:
                 report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep - 1, allele=a1)
-            if isinstance(a2, (int, int)) and a2 != a1 and a2 != 0:
+            if isinstance(a2, int) and a2 != a1 and a2 != 0:
                 report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep - 1, allele=a2)
 
 # -------- generation of reports and finalizing
