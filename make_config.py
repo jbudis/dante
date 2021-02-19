@@ -433,7 +433,8 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromos
     motif['prefilter'] = prefilter
 
     # write postfilter
-    motif['postfilter'] = {'bases': bases, 'repetitions': repetitions}
+    # postfilter needs to be edited
+    motif['postfilter'] = [{'bases': bases, 'repetitions': repetitions}]
 
     return motif
 

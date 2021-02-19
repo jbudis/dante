@@ -142,6 +142,9 @@ def remove_pcr_duplicates(annot_pairs):
 
         return dedup, duplic
 
+    if not annot_pairs:
+        return [], []
+
     # Deduplication according to first annotation in pair
     curr_pairs = remove_none(annot_pairs, True)
     curr_pairs = sorted(curr_pairs, key=attrgetter('ann1.read.sequence'))
