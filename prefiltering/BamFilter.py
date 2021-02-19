@@ -6,7 +6,7 @@ class BamFilter(DummyFilter):
     Filter class for BAM filtering according to the chromosome and reference starts/ends
     """
 
-    def __init__(self, chromosome, ref_start, ref_end, min_mapq=None, overlap=1):
+    def __init__(self, chromosome, ref_start, ref_end, min_mapq=None, overlap=1, include_unmapped=False):
         """
         Initialize BamFilter object
         :param chromosome: int - chromosome of interest in bam files
@@ -20,6 +20,7 @@ class BamFilter(DummyFilter):
         self.ref_end = ref_end
         self.overlap = overlap
         self.min_mapq = min_mapq
+        self.include_unmapped = include_unmapped
 
     @staticmethod
     def get_overlap(a_start, a_end, b_start, b_end):
@@ -32,8 +33,10 @@ class BamFilter(DummyFilter):
         :return: bool - True if read has passed the filter
         """
         try:
-            # if self.min_mapq is not None and read.map_qual < self.min_mapq:
-            #    return False
+            if self.include_unmapped:
+                return True
+            if self.min_mapq is not None and read.map_qual < self.min_mapq:
+                return False
             return read.chromosome == self.chromosome and self.get_overlap(self.ref_start, self.ref_end, read.ref_start, read.ref_end) >= self.overlap
         except (TypeError, AttributeError):
             # print('Read w/o chromosome:', read)

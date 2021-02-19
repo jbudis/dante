@@ -11,8 +11,6 @@ general:                    # General parameters
   output_all: False         # Output all reads, even pre-filtered. Warning: the output files may be quite long if turned on.
   verbosity: 1              # How verbose Dante is. Use integers 0-3.
   report_every: 1000000     # How often report progress (every this number of reads). Use 0 to not report progress at all (good for long files).
-  bam: False                # 
-  include_unmapped: False   # In case of BAM file, will dante consider even unmapped reads?
 
 allcall:                                                  # Parameters of genotypization
   param_file: all_call/training_input/ion_torrent.params  # Parameter file for genotyping. Absolute or relative from current directory.

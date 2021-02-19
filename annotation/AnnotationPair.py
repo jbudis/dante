@@ -1,6 +1,6 @@
 from annotation.Annotation import Annotation
 from operator import attrgetter
-from datetime import datetime
+
 
 def annotations_to_pairs(annotations):
     """
@@ -99,57 +99,64 @@ def remove_pcr_duplicates(annot_pairs):
                 arr.append(ap)
         return arr
 
+    def restore_none(pairs_with_none: list, pairs_without_none: list, first: bool = True) -> list:
+        """
+        Restore annotation pairs with None first (second) annotation from the pair.
+        :param pairs_with_none: list(AnnotationPair) - list of Annotation Pairs with None annotations
+        :param pairs_without_none: list(AnnotationPair) - list of Annotation Pairs without None annotations
+        :param first: bool - look at the first annotation from the pair?
+        :return: list(AnnotationPair) - list of Annotation Pairs with restored Annotation Pairs with None annotation
+        """
+        ann_pairs = pairs_without_none.copy()
 
-    def deduplicate(ann_pairs):
+        for ap in pairs_with_none:
+            if first and ap.ann1 is None:
+                ann_pairs.append(ap)
+            if not first and ap.ann2 is None:
+                ann_pairs.append(ap)
+        return ann_pairs
+
+    def deduplicate(ann_pairs: list):
+        """
+        Remove PCR duplicates -- deduplicate the annotation pair list.
+        :param ann_pairs: list(AnnotationPair) - list of Annotation Pairs sorted by annotation_1 or annotation_2
+        :return: list(AnnotationPair), list(AnnotationPair) - deduplicated list and duplications
+        """
         dedup = []
         duplic = []
-    
-        stop = len(ann_pairs)
-        i = 0
-        j = 1
-                    
-        while j < stop:
-            if ann_pairs[i] == ann_pairs[j]:
-                if ann_pairs[i].more_info_than(ann_pairs[j]):
-                    duplic.append(ann_pairs[j])
+
+        # Find duplicates by comparing neighbours in sorted list
+        prev_ap = ann_pairs[0]
+        for curr_ap in ann_pairs[1:]:
+            if prev_ap == curr_ap:
+                if prev_ap.more_info_than(curr_ap):
+                    duplic.append(curr_ap)
                 else:
-                    duplic.append(ann_pairs[i])
-                    i = j
+                    duplic.append(prev_ap)
+                    prev_ap = curr_ap
             else:
-                dedup.append(ann_pairs[i])
-                i = j
-            if j + 1 == stop:
-                dedup.append(ann_pairs[i])
-            j += 1
-            
+                dedup.append(prev_ap)
+                prev_ap = curr_ap
+
+        dedup.append(prev_ap)
+
         return dedup, duplic
-    
-    # print('Start deduplicating process ', datetime.now())
-    
-    a_pairs = remove_none(annot_pairs, True)
-    
-    a_pairs = sorted(a_pairs, key=attrgetter('ann1.read.sequence'))
-    
-    deduplicated1, duplicates = deduplicate(a_pairs)
-    
-    a_pairs2 = remove_none(deduplicated1, False)
-    
-    for ap in annot_pairs:
-        if ap.ann1 is None:
-            a_pairs2.append(ap)
-           
-    a_pairs2 = sorted(a_pairs2, key=lambda ann: ann.ann2.read.sequence[::-1])
 
-    deduplicated, duplicates2 = deduplicate(a_pairs2)
-        
-    for ap in deduplicated1:
-        if ap.ann2 is None:
-            deduplicated.append(ap)
-    
-    duplicates.extend(duplicates2)
+    # Deduplication according to first annotation in pair
+    curr_pairs = remove_none(annot_pairs, True)
+    curr_pairs = sorted(curr_pairs, key=attrgetter('ann1.read.sequence'))
+    deduplicated_1, duplicates_1 = deduplicate(curr_pairs)
 
-    # print('Deduplicating process finished', datetime.now())
-    
+    curr_pairs = restore_none(annot_pairs, deduplicated_1, True)
+
+    # Deduplication according to second annotation in pair
+    curr_pairs = remove_none(curr_pairs, False)
+    curr_pairs = sorted(curr_pairs, key=lambda ann: ann.ann2.read.sequence[::-1])
+    deduplicated_2, duplicates_2 = deduplicate(curr_pairs)
+
+    deduplicated = restore_none(deduplicated_1, deduplicated_2, False)
+    duplicates = duplicates_1 + duplicates_2
+
     return deduplicated, duplicates
 
 

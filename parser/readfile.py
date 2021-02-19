@@ -49,7 +49,7 @@ class Read:
     
     def __init__(self, name, sequence, quality=None, map_qual=None, chromosome=None, ref_start=None, ref_end=None, left_pair=None, complement=False):
         """
-        Initialie the Read object
+        Initialize the Read object
         :param name: str - read id
         :param sequence: str - sequence
         :param quality: str - sequencing quality
@@ -101,8 +101,6 @@ class Read:
         :return: Read - reversed read
         """
 
-        #self.translate_table = self.sequence.maketrans('ACGT', 'TGCA')
-
         reversed_sequence = self.sequence[::-1].translate(self.translate_table)
         reversed_quality = self.quality[::-1]
         return Read(self.name, reversed_sequence, reversed_quality, self.map_qual, chromosome=self.chromosome, ref_start=self.ref_start, ref_end=self.ref_end,
@@ -119,12 +117,16 @@ class ReadFile:
 
     def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0, chromosome=None, ref_start=None, ref_end=None, unmapped=False):
         """
-        Initilize ReadFile.
+        Initialize ReadFile.
         :param file_path: str/None - file path or None if reads come from stdin
         :param maximal_reads: int - read maximal of this number of reads
         :param stranded: 'yes'/'both'/'reverse' - whether to use stranded
         :param file_type: str - file type
         :param verbosity: int - how verbose are we
+        :param chromosome: str - chromosome
+        :param ref_start: int - reference start
+        :param ref_end: int - reference end
+        :param unmapped: boolean - include unmapped reads?
         """
         self.file_path = file_path
         self.maximal_reads = maximal_reads
@@ -142,6 +144,10 @@ class ReadFile:
         """
         Return reader according to file type and file path.
         :param verbosity: int - how verbose are we
+        :param chromosome: str - chromosome
+        :param ref_start: int - reference start
+        :param ref_end: int - reference end
+        :param unmapped: boolean - include unmapped reads?
         :return: reader object
         """
         readers = {
@@ -217,6 +223,10 @@ class ReadFile:
         Reader for bam files.
         :param file_name: str - file path to open
         :param verbosity: int - how verbose are we 0-3
+        :param chromosome: str - chromosome
+        :param pos_start: int - reference start
+        :param pos_end: int - reference end
+        :param unmapped: boolean - include unmapped reads?
         :return: iterator - reads a bam file iteratively
         """
 
@@ -224,12 +234,13 @@ class ReadFile:
             bam = pysam.AlignmentFile(file_name, "rb")
         else:
             bam = pysam.AlignmentFile(sys.stdin, "rb") 
-        
+
         if chromosome is not None and pos_start is not None and pos_end is not None:
+            # read reads from specific region
             try:
                 region = bam.fetch(chromosome, pos_start, pos_end)
             except ValueError:
-                print("Detected BAM file %s without index, please sort and index with 'samtools sort' and 'samtools index'." %(file_name))
+                print(f"Detected BAM file {file_name} without index, please sort and index with 'samtools sort' and 'samtools index'.")
                 sys.exit()
         else:
             region = bam
@@ -257,8 +268,7 @@ class ReadFile:
                 
             yield Read(read.qname, str(read.seq), read.qual, mapq, ref_id, ref_start, ref_end, left_pair=left_pair)
         bam.close()
-       
-        
+
     @staticmethod
     def iter_seqs_fastq(file_name, is_gzipped):
         """

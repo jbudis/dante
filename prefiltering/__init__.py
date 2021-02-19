@@ -44,7 +44,8 @@ def create_filter(prefilter, motif_tuple):
             assert item in prefilter, 'Error: %s is missing in BamFilter specification, add "%s: smth" line to config!' % (item, item)
         overlap = prefilter['overlap'] if 'overlap' in prefilter else 1
         min_mapq = prefilter['min_mapq'] if 'min_mapq' in prefilter else None
-        return BamFilter(prefilter['chromosome'], prefilter['ref_start'], prefilter['ref_end'], overlap=overlap, min_mapq=min_mapq)
+        include_unmapped = prefilter['include_unmapped'] if 'include_unmapped' in prefilter else False
+        return BamFilter(prefilter['chromosome'], prefilter['ref_start'], prefilter['ref_end'], overlap=overlap, min_mapq=min_mapq, include_unmapped=include_unmapped)
     elif prefilter['type'] == "MultiFilter":
         filters = list(map(lambda x: create_filter(x, motif_tuple), prefilter['subfilters']))
         return MultiFilter(filters)

@@ -7,4 +7,3 @@ pandas
 scipy
 matplotlib
 PyYAML
-ensembl_rest
