@@ -477,7 +477,17 @@ if __name__ == "__main__":
                 right_flank = seq_new[-flank_len:]
 
         # make motif
-        motifs.append(make_motif(disease, description, repetitions, left_flank, right_flank, seq_type, chromosome, ref_start, ref_end, unmapped, min_mapq))
+        motif = make_motif(disease, description, repetitions, left_flank, right_flank, seq_type, chromosome, ref_start, ref_end, unmapped, min_mapq)
+
+        # check duplicate modules
+        new_motif = True
+        for mot in motifs:
+            if mot['modules'] == motif['modules']:
+                new_motif = False
+                break
+
+        if new_motif:
+            motifs.append(motif)
 
     config['motifs'] = motifs
 
