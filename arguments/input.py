@@ -2,12 +2,9 @@ import os
 import argparse
 import textwrap
 import templates
-from parser import ReadFile
-import re
 import sys
 import report
 import logging
-from annotation import MOTIF_NUCLEOTIDES
 
 import arguments.yaml_reader
 
@@ -73,59 +70,6 @@ def load_arguments():
         exit(-1)
 
     return config
-
-
-def load_arguments_old():
-    """
-    Loads and parses the arguments.
-    :return: args - parsed arguments
-    """
-    description = templates.DANTE_DESCRIPTION
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description=textwrap.dedent(description))
-
-    required = parser.add_argument_group('Required')
-    required.add_argument('output_prefix', type=writable_prefix, help="Prefix of output file names")
-    required.add_argument('motif', type=str_motif, help="Motif sequence (e.g., ATCGGA,2-TTG,ATCGAT). THE REPEAT NUMBER MUST BE GREATER THAN 1")
-    required.add_argument('read_file', type=nonempty_file, nargs='+', help="Read file(s) to annotate, if no file names provided, input is read from stdin and --file-type is required argument. ")
-
-    prefilter = parser.add_argument_group('Prefilter')
-    prefilter.add_argument('--filter-type', choices=FILTER_TYPES, default='SimpleFilter', help="Select the type of prefiltering, defaults to SimpleFilter")
-    prefilter.add_argument('-f', '--filter', type=str_motif, default=None,
-                           help="Filter sequence. To use multiple filters, add them separated by a comma (e.g., ATTATTATT,5-CTG,ATGCT), defaults to motif. Recommendations:\n"
-                                "SimpleFilter -- use only the repeating element with less repetitions than in motif (e.g., 4-CTG).\n"
-                                "other filters -- use the whole motif, set additional arguments properly.")
-    prefilter.add_argument('--levensh-devs', type=multiple_positive_ints, default=None,
-                           help="Allowed number of deviations in LevenshteinFilter for each motif. To set allowed number of deviations for each filter separately, "
-                                "add them separated by a comma (e.g., 4,2,4), defaults to %d" % DEFAULT_LEVENSHTEIN)
-    prefilter.add_argument('--mismatches', type=positive_int, default=None,
-                           help="Number of allowed mismatches in regex filtering, defaults to %d (greatly slows down computation with higher (>7) values)" % DEFAULT_MISMATCHES)
-
-    annotation = parser.add_argument_group('Annotation')
-    annotation.add_argument('--delete-prob', type=probability, default=0.01, help="Base delete probability")
-    annotation.add_argument('--insert-prob', type=probability, default=0.01, help="Base insert probability")
-    annotation.add_argument('--max-delete-skips', type=positive_int, default=2, help="Max number of consequently deleted bases")
-    annotation.add_argument('--motif-frequency', type=probability, default=0.01, help="Probability of leaving the start state to first pattern state")
-    annotation.add_argument('--snp-chance', type=probability, default=0.02, help="Probability for base being a SNP")
-    annotation.add_argument('-p', '--processes', type=positive_nonzero_int, default=1, help="Number of processes for annotation")
-
-    postfilter = parser.add_argument_group('Postfilter')
-    postfilter.add_argument('-r', '--required-repetitions', type=multiple_positive_ints, default=None,
-                            help="Minimal repetition count for each module,e.g. 0,3,1 means that remains only read with at least 3 repetitions of the motif and one repetition of the last primer")
-    postfilter.add_argument('-b', '--required-bases', type=multiple_positive_ints, default=None,
-                            help="Minimal number of bases annotated by each module,e.g. 0,10,5 means that remains only read with at least 10 bases annotated as the motif and 5 as the last primer")
-
-    other = parser.add_argument_group('Other')
-    other.add_argument('-t', '--file-type', choices=ReadFile.SUPPORTED_FORMATS, help="Type of all of the read files. Required if reads comes directly from stdin.")
-    other.add_argument('--stranded', choices=ReadFile.STRANDED_TYPES, default='both',
-                       help='Specify, if data are from strand-specific assay. "yes" would examine sequences, '
-                            'as defined in read file, "reverse" would examine reverse complemented sequences, "both" would '
-                            'examine both of them. Defaults to "both"')
-    other.add_argument('--max-reads', type=positive_int, default=None, help="Maximal number of reads to process. Default - process all in the input.")
-
-    args = parser.parse_args()
-
-    return args
 
 
 def check_arguments(args):
@@ -282,35 +226,6 @@ def writable_prefix(prefix):
         # report.log_str(error, priority=logging.ERROR)
         raise argparse.ArgumentTypeError(error)
     return prefix
-
-
-def str_motif(code):
-    """
-    Split motif code into individual parts, such as primers and STRs
-    :param code: motif code, e.g ACACAGT,3-AGT,ACCAC
-    :return: sequence and number of repetition for each primer and STR of the motif
-    """
-
-    def parse_word(sub_code):
-        """
-        Split individual parts of motif code into sequence and number of repetitions
-        :param sub_code: part of motif code, either primer or STR
-        :return: sequence of the part and number of its repetition (1 for primer)
-        """
-        is_primer = sub_code[0] in MOTIF_NUCLEOTIDES
-        if is_primer:
-            return sub_code, 1
-
-        return sub_code[sub_code.find('-') + 1:], int(sub_code[:sub_code.find('-')])
-
-    code_upper = code.upper()
-    reg = re.compile('^((\d+-)?[{nucls}]+(,(\d+-)?[{nucls}]+)*)$'.format(nucls=''.join(MOTIF_NUCLEOTIDES)))
-    if not reg.match(code_upper):
-        error = "Illegal motif code: %s" % code
-        # report.log_str(error, priority=logging.ERROR)
-        raise argparse.ArgumentTypeError(error)
-
-    return [parse_word(word) for word in code_upper.split(',')]
 
 
 def infer_index_rep(motif, postfilter):

@@ -1,9 +1,0 @@
-numpy
-multiprocess
-pysam
-regex
-numba
-pandas
-scipy
-matplotlib
-PyYAML

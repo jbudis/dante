@@ -13,33 +13,17 @@ Reported figures provide an evidence for expanded allele, which is too long to b
 
 These instructions will get you a copy of the project up and running on your local machine. 
 
-### Prerequisites
-
-Dante is developed and tested on Python 2.7 with libraries determined in the requirements.txt file: 
-
-```
-numpy==1.11.0
-multiprocess==0.70.5
-pysam==0.11.2.2
-regex==2017.9.23
-numba==0.35.0
-pandas==0.19.1
-scipy==0.18.1
-matplotlib==1.5.1
-PyYAML==3.12
-```
-
-All libraries may be easily installed using pip.
-
-```
-pip install <dependency>
-```
-
 ### Installation
 
-Dante requires only Python 2.7 interpreter with libraries listed in section Prerequisites. After cloning the repository, you may check out by: 
+Dante is developed and tested on Python 3.7 with libraries determined in the `conda_env.yaml`. Create the conda environment as following:
+```bash
+conda create -n dante -f conda_env.yml
 ```
-python dante.py --help
+
+Furthermore, if you need to use the config converter program `make_config.py`, you need to additionaly install `ensembl_rest` python package (not available directly through conda):
+
+```bash
+pip install ensembl_rest==0.3.3
 ```
 
 ### Example dataset

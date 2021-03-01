@@ -313,8 +313,8 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
         dist_filt[r[index_rep]] += c
 
     # create barplots
-    rects_filt = plt.bar(np.arange(xm + 1) - width / 2.0, dist_filt, width, color='grey', alpha=0.4)
-    rects = plt.bar(np.arange(xm + 1) - width / 2.0, dist, width)
+    rects_filt = plt.bar(np.arange(xm + 1), dist_filt, width, color='grey', alpha=0.4)
+    rects = plt.bar(np.arange(xm + 1), dist, width)
     plt.xticks(np.arange(1, xm + 1))
     plt.ylabel("Counts")
     plt.xlabel("STR repetitions")

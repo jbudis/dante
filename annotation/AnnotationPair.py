@@ -125,6 +125,9 @@ def remove_pcr_duplicates(annot_pairs):
         dedup = []
         duplic = []
 
+        if not ann_pairs:
+            return [], []
+
         # Find duplicates by comparing neighbours in sorted list
         prev_ap = ann_pairs[0]
         for curr_ap in ann_pairs[1:]:
