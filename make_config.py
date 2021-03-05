@@ -11,6 +11,7 @@ import sys
 import yaml
 import textwrap
 from dataclasses import dataclass
+import math
 
 
 @dataclass
@@ -52,8 +53,20 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
     parser.add_argument('config_file', type=nonempty_file, help='YAML configuration file')
 
     parser.add_argument('--flank', type=int, help='Length of flanking sequence (default=30)', default=30)
-    parser.add_argument('--seq', type=int, help='The way of typing repetitive sequence with 1 repetition into YAML file. (default=1)', default=1)
-    parser.add_argument('-m', type=int, help='Min map quality - I do not think we use this parameter in dante. It is used in BamFilter but the line is in comments')
+    parser.add_argument('--seq', type=int,
+                        help='The way of typing repetitive sequence with 1 repetition into YAML file. (default=1)',
+                        default=1)
+
+    parser.add_argument('--pmf', type=int, help='Minimal length of flanking sequence to pass postfilter (default=5)',
+                        default=5)
+    parser.add_argument('--pmfc', type=int,
+                        help='Minimal length of flanking sequence to pass postfilter for repetition pairs (default=3)',
+                        default=3)
+    parser.add_argument('--pmr', type=int, help='Minimal number of repetitions to pass prefilter and postfilter (default=3)',
+                        default=3)
+
+    parser.add_argument('-m', type=int,
+                        help='Min map quality - I do not think we use this parameter in dante. It is used in BamFilter but the line is in comments')
 
     parser.add_argument('-u', help='Include unmapped reads', action="store_true")
     parser.add_argument('-r', help='Remove current motifs in YAML configuration file', action="store_true")
@@ -76,7 +89,7 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
         print('Unsupported format of table file. Supported formats are csv or tsv.')
         sys.exit()
 
-    return config_dict, table_df, args.flank, args.seq, args.u, args.config_file, args.m
+    return config_dict, table_df, args.flank, args.seq, args.u, args.config_file, args.m, args.pmf, args.pmfc, args.pmr
 
 
 def get_ref_sequence(chromosome, start_pos, end_pos):
@@ -112,6 +125,7 @@ def parse_nomenclature(nc, flank):
              start_pos - int - reference start position
              end_pos - int - reference end position
     """
+
     def get_number(string):
         """
         Get first number from string and remove all characters from string until the end of this number.
@@ -169,7 +183,7 @@ def parse_nomenclature(nc, flank):
 
     # remove all spaces and commas
     nc = re.sub(r'[ ,]', '', nc)
-    
+
     # split string according first occurrence of colon
     colon = nc.index(':')
     name = nc[:colon]
@@ -217,7 +231,8 @@ def check_first(sequence, seq_left, rep_list):
 
     # check if sequence match sequence from first repetition
     if not re.match(first_rep_seq, sequence):
-        print(f'Error: Repetitive sequence {first_rep_seq} in {rep_list} does not match sequence from referenced genome')
+        print(
+            f'Error: Repetitive sequence {first_rep_seq} in {rep_list} does not match sequence from referenced genome')
 
         if len(rep_list) > 1:
             print('Attempt to repair by skipping this repetition')
@@ -266,7 +281,8 @@ def check_repetitions(sequence, seq_right, rep_list):
             if re.match(rep_seq, sequence):
                 sequence = sequence[len(rep_seq):]
             else:
-                print(f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
+                print(
+                    f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
                 print('Attempt to repair by decreasing number of this repetition')
                 # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAATCATC, repetitions after repair: (GCA - 1, ATC - 2)
                 repetition.num = r
@@ -359,9 +375,196 @@ def compare_sequences(ref_seq, rep_list, flank):
     return rep_list, seq_left, seq_right
 
 
-def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromosome, start, end, unmapped, mapq):
+def write_bases_repetitions(bases, repetitions, rep_list, min_flank, index, back):
     """
-    Make motif to config file.
+    Write bases and repetitions for postfilter.
+    :param bases: list(int) - bases in postfilter - IN-PLACE CHANGE
+    :param repetitions: list(int) - repetitions in postfilter - IN-PLACE CHANGE
+    :param rep_list: list(Repetition) - sequences for motif
+    :param min_flank: int - minimal length of flanking sequence to pass postfilter
+    :param index: int - index of current bases/repetition
+    :param back: int - move backwards in list?
+    """
+
+    j = index
+
+    while min_flank > 0:
+        temp = rep_list[j]
+        temp_num = max(temp.num, 1)
+        bases[j] = temp_num * len(temp.seq)
+
+        if bases[j] > min_flank:
+            bases[j] = min_flank
+
+        repetitions[j] = min(math.ceil(min_flank / len(temp.seq)), temp_num)
+        min_flank -= bases[j]
+
+        if back:
+            j -= 1
+        else:
+            j += 1
+
+
+def single_filter(rep_list, min_flank, min_rep):
+    """
+    Make single postfilters (1 repetitive sequence) and prefilter.
+    :param rep_list: list(Repetition) - sequences for motif
+    :param min_flank: int - minimal length of flanking sequence to pass postfilter
+    :param min_rep: int - minimal number of repetitions to pass postfilter and prefilter
+    :return: postfilters - list(dict)
+             prefilter - list(str)
+    """
+
+    postfilters = []
+    prefilters = []
+
+    for i, rep in enumerate(rep_list):
+        seq = rep.seq
+        num = rep.num
+        if num > 0:
+            repetitions = [0] * len(rep_list)
+            bases = [0] * len(rep_list)
+
+            repetitions[i] = min(min_rep, num)
+            bases[i] = repetitions[i] * len(seq)
+
+            # bases before
+            write_bases_repetitions(bases, repetitions, rep_list, min_flank, i - 1, True)
+
+            # bases after
+            write_bases_repetitions(bases, repetitions, rep_list, min_flank, i + 1, False)
+
+            postfilters.append({'bases': ','.join(map(str, bases)), 'repetitions': ','.join(map(str, repetitions)), 'index_rep': i + 1})
+            prefilters.append(str(repetitions[i]) + '-' + seq)
+
+    return prefilters, postfilters
+
+
+def complex_filter(rep_list, min_flank, min_rep, indexes):
+    """
+    Make complex postfilters (2 repetitive sequences).
+    :param rep_list: list(Repetition) - sequences for motif
+    :param min_flank: int - minimal length of flanking sequence to pass postfilter
+    :param min_rep: int - minimal number of repetitions to pass postfilter
+    :param indexes: list(int) - indexes of repetitive sequences
+    :return: postfilters - list(dict)
+    """
+    postfilters = []
+
+    for first, second in zip(indexes[:-1], indexes[1:]):
+
+        repetitions = [0] * len(rep_list)
+        bases = [0] * len(rep_list)
+
+        j = first
+        # bases between 2 repetitions
+        while j <= second:
+            temp = rep_list[j]
+            temp_num = max(temp.num, 1)
+            temp_num = min(temp_num, min_rep)
+            bases[j] = temp_num * len(temp.seq)
+
+            repetitions[j] = temp_num
+            j += 1
+
+        # bases before
+        write_bases_repetitions(bases, repetitions, rep_list, min_flank, first - 1, True)
+
+        # bases after
+        write_bases_repetitions(bases, repetitions, rep_list, min_flank, second + 1, False)
+
+        postfilters.append({'bases': ','.join(map(str, bases)), 'repetitions': ','.join(map(str, repetitions)), 'index_rep': first + 1, 'index_rep2': second + 1})
+
+    return postfilters
+
+
+def list_for_filters(modules):
+    """
+    Make list of modules (repetitive sequences) in better format for making filters.
+    :param modules: dict - sequences for motif in dict format
+    :return: rep_list - list(Repetition)
+    """
+    rep_list = []
+    for module in modules:
+        rep = module['seq']
+        if re.match(r'\d', rep) is not None:
+            num = int(re.search(r'\d+', rep).group())
+        else:
+            # 0 means 1 repetition without generating postfilter
+            num = 0
+        seq = re.search(r'[A-za-z]+', rep).group()
+        rep_list.append(Repetition(seq, num))
+
+    return rep_list
+
+
+def make_filters(modules, min_flank, min_flank_complex, min_rep):
+    """
+    Make postfilter and prefilter for config file.
+    :param modules: dict - sequences for motif in dict format
+    :param min_flank: int - minimal length of flanking sequence to pass postfilter
+    :param min_flank_complex: int - minimal length of flanking sequence to pass postfilter for repetition pairs
+    :param min_rep: int - minimal number of repetitions to pass postfilter and prefilter
+    :return: prefilter - dict
+             postfilters - list of dict
+    """
+    rep_list = list_for_filters(modules)
+
+    prefilters, postfilters1 = single_filter(rep_list, min_flank, min_rep)
+
+    prefilter = {'type': 'SimpleFilter', 'seq': ','.join(prefilters)}
+
+    if len(postfilters1) < 2:
+        return prefilter, postfilters1
+
+    indexes = []
+    for post in postfilters1:
+        indexes.append(int(post['index_rep']) - 1)
+
+    postfilters2 = complex_filter(rep_list, min_flank_complex, min_rep, indexes)
+
+    postfilters = postfilters1 + postfilters2
+
+    return prefilter, postfilters
+
+
+def make_modules(seq_left, seq_right, rep_list, rep_type):
+    """
+    Make modules for config file.
+    :param seq_left: str - left flank sequence
+    :param seq_right: str - right flank sequence
+    :param rep_list: list(Repetition) - list of Repetitions(seq, num)
+    :param rep_type: int - the way of writing repetitive sequences with 1 repetition
+    :return: modules - dictionary
+    """
+    modules = []
+    seq = seq_left
+
+    # write all sequences into modules in user specified format
+    for repetition in rep_list:
+        if repetition.num > 1 or (rep_type == 3 and repetition.num > 0):
+            if seq:
+                modules.append({'seq': seq})
+                seq = ''
+            modules.append({'seq': str(repetition.num) + '-' + repetition.seq})
+        elif repetition.num == 1:
+            if rep_type == 2:
+                seq += repetition.seq
+            else:
+                if seq:
+                    modules.append({'seq': seq})
+                    seq = ''
+                modules.append({'seq': repetition.seq})
+
+    modules.append({'seq': seq + seq_right})
+
+    return modules
+
+
+def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromosome, start, end, unmapped, mapq,
+               min_flank, min_flank_complex, min_rep):
+    """
+    Make motif for config file.
     :param desc: str - motif description
     :param full_name: str - motif full name
     :param rep_list: list(Repetition) - list of Repetitions(seq, num)
@@ -372,76 +575,36 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromos
     :param start: int - reference start
     :param end: int - reference end
     :param unmapped - boolean - include unmapped?
-    :param mapq: int - minimum mapping quality
+    :param mapq: int - minimal mapping quality
+    :param min_flank: int - minimal length of flanking sequence to pass postfilter
+    :param min_flank_complex: int - minimal length of flanking sequence to pass postfilter for repetition pairs
+    :param min_rep: int - minimal number of repetitions to pass postfilter and prefilter
     :return: motif - dictionary
     """
 
-    motif = {'description': desc, 'full_name': full_name}
+    motif = {'description': desc, 'full_name': full_name, 'chromosome': 'chr' + chromosome, 'ref_start': start,
+             'ref_end': end, 'include_unmapped': unmapped}
 
-    # write modules
-    modules = []
-
-    still_flank = False
-    first_right_flank = 0
-
-    if rep_type != 2:
-        modules.append({'seq': seq_left})
-    else:
-        # find out where is the first sequence which can be written into right flank sequence
-        still_flank = True
-        for i, repetition in reversed(list(enumerate(rep_list))):
-            if repetition.num > 1:
-                first_right_flank = i + 1
-                break
-
-    bases = '5'
-    repetitions = '1'
-
-    # write all sequences into modules in user specified format
-    for i, repetition in enumerate(rep_list):
-        if repetition.num > 1 or (rep_type == 3 and repetition.num > 0):
-            if still_flank:
-                modules.append({'seq': seq_left})
-                still_flank = False
-            repetitions += ',' + str(int(repetition.num / 3))
-            bases += ',' + str((int(repetition.num / 3)) * len(repetition.seq))
-            modules.append({'seq': str(repetition.num) + '-' + repetition.seq})
-        elif repetition.num == 1:
-            if still_flank:
-                seq_left = seq_left + repetition.seq
-            elif seq_type == 2 and i >= first_right_flank:
-                seq_right = repetition.seq + seq_right
-            else:
-                repetitions += ',0'
-                bases += ',0'
-                modules.append({'seq': repetition.seq})
-
-    if still_flank:
-        modules.append({'seq': seq_left})
-
-    modules.append({'seq': seq_right})
-
-    bases += ',5'
-    repetitions += ',1'
+    modules = make_modules(seq_left, seq_right, rep_list, rep_type)
 
     motif['modules'] = modules
 
-    # write prefilter
-    prefilter = {'type': 'BamFilter', 'chromosome': 'chr' + chromosome, 'ref_start': start, 'ref_end': end, 'include_unmapped': unmapped}
-    if mapq is not None:
-        prefilter['min_mapq'] = mapq
-    motif['prefilter'] = prefilter
+    motif['prefilter'], motif['postfilter'] = make_filters(modules, min_flank, min_flank_complex, min_rep)
 
-    # write postfilter
-    # postfilter needs to be edited
-    motif['postfilter'] = [{'bases': bases, 'repetitions': repetitions}]
+    """ Not sure about this
+    if mapq is not None:
+        motif['min_mapq'] = mapq
+    """
 
     return motif
 
 
+"""
+Start of real code
+"""
 if __name__ == "__main__":
     # load arguments
-    config, table, flank_len, seq_type, unmapped, path, min_mapq = load_arguments()
+    config, table, flank_len, seq_type, include_unmapped, path, min_mapq, min_flank_post, min_flank_post_complex, min_rep_post = load_arguments()
     motifs = []
 
     # iter over dataframe in motif table
@@ -477,7 +640,8 @@ if __name__ == "__main__":
                 right_flank = seq_new[-flank_len:]
 
         # make motif
-        motif = make_motif(disease, description, repetitions, left_flank, right_flank, seq_type, chromosome, ref_start, ref_end, unmapped, min_mapq)
+        motif = make_motif(disease, description, repetitions, left_flank, right_flank, seq_type, chromosome, ref_start,
+                           ref_end, include_unmapped, min_mapq, min_flank_post, min_flank_post_complex, min_rep_post)
 
         # check duplicate modules
         new_motif = True

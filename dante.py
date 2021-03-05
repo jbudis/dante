@@ -217,11 +217,11 @@ if __name__ == "__main__":
     include_unmapped = False
 
     for motif in config['motifs']:
-        if motif['prefilter']['type'] != 'BamFilter':
+        if 'chromosome' not in motif:
             bam = False
             include_unmapped = False
             break
-        elif 'include_unmapped' in motif['prefilter'] and motif['prefilter']['include_unmapped']:
+        elif 'include_unmapped' in motif and motif['include_unmapped']:
             include_unmapped = True
 
     for input_file in config['inputs']:
@@ -235,7 +235,7 @@ if __name__ == "__main__":
             # annotate specified reads for every motif
             report.log_str(f"Parsing file {read_filename} (bam type)")
             for i, motif in enumerate(config['motifs']):
-                read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, config['general']['verbosity'], motif['prefilter']['chromosome'], motif['prefilter']['ref_start'], motif['prefilter']['ref_end'])
+                read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, config['general']['verbosity'], motif['chromosome'], motif['ref_start'], motif['ref_end'])
 
                 # initialize annotator and filter for current motif
                 annot = [annotators[i]]
