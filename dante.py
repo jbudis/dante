@@ -326,7 +326,7 @@ if __name__ == "__main__":
 
             # write it to files
             report.log_str("Motif %12s: Generating output files into %s" % (motif['full_name'], motif_dir))
-            report.write_all(qual_annot, primer_annot, filt_annot, dedup_ap[i], all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j)
+            report.write_all(qual_annot, primer_annot, filt_annot, dedup_ap[i], all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j, config['general']['quiet_mode'])
 
     # -------- All_Call part of DANTE
 
@@ -372,6 +372,8 @@ if __name__ == "__main__":
             inference = all_call.Inference(read_distribution, config['allcall']['param_file'], str_rep=len_str,
                                            minl_primer1=postfilter_bases[index_rep - 2], minl_primer2=postfilter_bases[index_rep], minl_str=postfilter_bases[index_rep - 1])
             file_pcolor = '%s/pcolor_%d' % (motif_dir, j + 1)
+            if config['general']['quiet_mode']:
+                file_pcolor = None
             file_output = '%s/allcall_%d.txt' % (motif_dir, j + 1)
             inference.all_call(qual_annot, primer_annot, index_rep - 1, file_pcolor, file_output, motif['full_name'])
 
@@ -379,16 +381,17 @@ if __name__ == "__main__":
             confidence = report.read_all_call('%s/allcall_%d.txt' % (motif_dir, j + 1))
             if confidence is not None:
                 conf, a1, a2, c1, c2 = confidence
-                if isinstance(a1, int) and a1 > 0:
-                    report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep - 1, allele=a1)
-                if isinstance(a2, int) and a2 != a1 and a2 != 0:
-                    report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep - 1, allele=a2)
+                if not config['general']['quiet_mode']:
+                    if isinstance(a1, int) and a1 > 0:
+                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep - 1, allele=a1)
+                    if isinstance(a2, int) and a2 != a1 and a2 != 0:
+                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep - 1, allele=a2)
 
     # -------- generation of reports and finalizing
 
     # generate report and output files for whole run
     report.log_str('Generating final report')
-    report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'])
+    report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'], config['general']['quiet_mode'])
 
     # print the time of the end:
     end_time = datetime.now()

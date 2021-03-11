@@ -189,13 +189,14 @@ def sorted_repetitions(annotations):
     return sorted(count_dict.items(), key=lambda k: tuple_sort_key(k[0]))
 
 
-def write_histogram(out_file, annotations, profile_file=None, index_rep=None):
+def write_histogram(out_file, annotations, profile_file=None, index_rep=None, quiet=False):
     """
     Stores quantity of different combinations of module repetitions into text file
     :param out_file: str - output file for repetitions
     :param annotations: Annotated reads
     :param profile_file: str - output file for profile
     :param index_rep: int - index repetition
+    :param quiet: boolean - write profile?
     """
     # setup
     sorted_reps = sorted_repetitions(annotations)
@@ -207,15 +208,16 @@ def write_histogram(out_file, annotations, profile_file=None, index_rep=None):
             fw.write('%s\t%s\n' % (counts, rep_code))
 
     # write profile
-    if profile_file is not None and index_rep is not None:
-        length = max([0] + [x[0][index_rep] for x in sorted_reps])
-        profile = np.zeros(length + 1, dtype=int)
+    if not quiet:
+        if profile_file is not None and index_rep is not None:
+            length = max([0] + [x[0][index_rep] for x in sorted_reps])
+            profile = np.zeros(length + 1, dtype=int)
 
-        for repetitions, counts in sorted_reps:
-            profile[repetitions[index_rep]] += counts
+            for repetitions, counts in sorted_reps:
+                profile[repetitions[index_rep]] += counts
 
-        with open(profile_file, 'w') as f:
-            f.write('\t'.join(map(str, profile)))
+            with open(profile_file, 'w') as f:
+                f.write('\t'.join(map(str, profile)))
 
 
 def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq, seq2):
@@ -336,7 +338,7 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     plt.savefig(out_prefix + '.png')
 
 
-def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, all_reads, motif_dir, motif_modules, index_rep, index_rep2, j):
+def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, all_reads, motif_dir, motif_modules, index_rep, index_rep2, j, quiet=False):
     """
     Write all output files: quality annotations, one-primer annotations, filtered annotations, statistics, repetitions + images.
     :param quality_annotations: list(Annotation) - list of blue annotations
@@ -349,23 +351,26 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
     :param index_rep: int - index of first repetition in modules
     :param index_rep2: int - index of second repetition in modules
     :param j: int - index of postfilter
+    :param quiet: boolean - less files on the output?
     :return: None
     """
     # write output files
-    write_annotations('%s/annotations_%d.txt' % (motif_dir, j + 1), quality_annotations)
-    write_annotations('%s/filtered_%d.txt' % (motif_dir, j + 1), filtered_annotations)
-    write_annotations('%s/filtered_primer_%d.txt' % (motif_dir, j + 1), filt_primer)
-    write_summary_statistics('%s/stats_%d.txt' % (motif_dir, j + 1), quality_annotations, all_reads)
-    write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1)
-    write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer)
-    if index_rep2 is not None:
-        # print("aps", len(dedup_ap[i]))
-        write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), dedup_ap, index_rep - 1, index_rep2 - 1, motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
-        write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1, index_rep2 - 1)
-    else:
-        write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
-        write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1)
+    if not quiet:
+        write_annotations('%s/annotations_%d.txt' % (motif_dir, j + 1), quality_annotations)
+        write_annotations('%s/filtered_%d.txt' % (motif_dir, j + 1), filtered_annotations)
+        write_annotations('%s/filtered_primer_%d.txt' % (motif_dir, j + 1), filt_primer)
+        write_summary_statistics('%s/stats_%d.txt' % (motif_dir, j + 1), quality_annotations, all_reads)
 
+        if index_rep2 is not None:
+            # print("aps", len(dedup_ap[i]))
+            write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), dedup_ap, index_rep - 1, index_rep2 - 1, motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
+            write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1, index_rep2 - 1)
+        else:
+            write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
+            write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1)
+
+    write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
+    write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer, quiet=quiet)
 
 def get_seq_from_module(module_dict):
     """
@@ -493,12 +498,13 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     return result_table
 
 
-def write_report(report_dir, motifs, output_dir):
+def write_report(report_dir, motifs, output_dir, quiet=False):
     """
     Generate and write a report.
     :param report_dir: str - dir name for reports
     :param motifs: dict - parameters of motifs
     :param output_dir: str - output directory for searching of all_call outputs
+    :param quiet: boolean - less files on the output?
     :return: None
     """
     # tsv file with table:
@@ -540,25 +546,26 @@ def write_report(report_dir, motifs, output_dir):
                 if postfilter['index_rep2'] != 'no':
                     highlight.append(postfilter['index_rep2'] - 1)
                 row = report.html_templates.generate_row(motif_name, seq, confidence, postfilter, reads_blue, reads_grey, highlight=highlight)
-                mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
-
-                mcs.append(mc)
-                ms.append(m)
                 rows.append(row)
 
                 # add to csv table:
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
-                # add to profiles
-                if postfilter['index_rep2'] == 'no':
-                    with open('%s/%s/profile_%d.txt' % (output_dir, motif_name, i + 1)) as po:
-                        line = po.readline()
-                        pf.write('%s_%d\t%s\n' % (motif_name, i + 1, line))
+                if not quiet:
+                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
+                    mcs.append(mc)
+                    ms.append(m)
 
-                    # add to true
-                    if confidence is None:
-                        confidence = [0.0, 0, 0]
-                    tf.write('%s_%d\t%s\t%s\n' % (motif_name, i + 1, str(confidence[1]), str(confidence[2])))
+                    # add to profiles
+                    if postfilter['index_rep2'] == 'no':
+                        with open('%s/%s/profile_%d.txt' % (output_dir, motif_name, i + 1)) as po:
+                            line = po.readline()
+                            pf.write('%s_%d\t%s\n' % (motif_name, i + 1, line))
+
+                        # add to true
+                        if confidence is None:
+                            confidence = [0.0, 0, 0]
+                        tf.write('%s_%d\t%s\t%s\n' % (motif_name, i + 1, str(confidence[1]), str(confidence[2])))
 
     # save the report file
     script_dir = os.path.dirname(os.path.abspath(__file__))
