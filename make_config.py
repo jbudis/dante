@@ -190,7 +190,10 @@ def parse_nomenclature(nc, flank):
     reg_seq = nc[colon:]
 
     # get chromosome - number before dot
-    dot = name.index('.')
+    try:
+        dot = name.index('.')
+    except ValueError: # dot not found
+        dot = None
     chromosome = re.sub(r'[^\d]', '', name[:dot])
     chromosome = str(int(chromosome))
 

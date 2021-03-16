@@ -293,10 +293,12 @@ if __name__ == "__main__":
         dedup_ap[i], duplicates = annotation.remove_pcr_duplicates(annotation_pairs)
 
         # report them
-        if not os.path.exists(motif_dir):
-            os.makedirs(motif_dir)
-        report.write_annotation_pairs('%s/annotation_pairs.txt' % motif_dir, dedup_ap[i])
-        report.write_annotation_pairs('%s/annotation_pairs_duplicates.txt' % motif_dir, duplicates)
+        if not config['general']['quiet_mode']:
+            if not os.path.exists(motif_dir):
+                os.makedirs(motif_dir)
+
+            report.write_annotation_pairs('%s/annotation_pairs.txt' % motif_dir, dedup_ap[i])
+            report.write_annotation_pairs('%s/annotation_pairs_duplicates.txt' % motif_dir, duplicates)
 
         # log it
         report.log_str('Motif %12s: %8d reads -- %8d pairs (%8d deduplicated + %8d PCR duplicates)' % (
