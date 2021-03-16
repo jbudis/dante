@@ -354,6 +354,10 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
     :param quiet: boolean - less files on the output?
     :return: None
     """
+    # create dir if not exists:
+    if not os.path.exists(motif_dir):
+        os.makedirs(motif_dir)
+
     # write output files
     if not quiet:
         write_annotations('%s/annotations_%d.txt' % (motif_dir, j + 1), quality_annotations)
