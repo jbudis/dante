@@ -224,7 +224,7 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     """
     Stores quantity of different combinations of module repetitions, generates separate graph image for each module
     :param out_prefix: Output file prefix
-    :param deduplicated: list[AnnotationPair] - read pairs
+    :param deduplicated: list[Annotation] - read pairs
     :param index_rep: int - index of repetition module of a motif
     :param index_rep2: int - index of the second repetition module of a motif
     :param seq: str - module of the repetition
@@ -233,15 +233,15 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     if deduplicated is None or len(deduplicated) == 0:
         return
 
-    dedup_reps_i1 = [x.get_str_repetitions(index_rep) for x in deduplicated if x.get_str_repetitions(index_rep) is not None]
-    dedup_reps_i2 = [x.get_str_repetitions(index_rep2) for x in deduplicated if x.get_str_repetitions(index_rep2) is not None]
+    dedup_reps = [(x.get_str_repetitions(index_rep), x.get_str_repetitions(index_rep2)) for x in deduplicated
+                  if x.get_str_repetitions(index_rep) is not None and x.get_str_repetitions(index_rep2) is not None]
 
-    if len(dedup_reps_i1) == 0 or len(dedup_reps_i2) == 0:
+    if len(dedup_reps) == 0:
         return
 
     # assign maximals
-    xm = max([r for _, r in dedup_reps_i1])
-    ym = max([r for _, r in dedup_reps_i2])
+    xm = max([r for (_, r), _ in dedup_reps])
+    ym = max([r for _, (_, r) in dedup_reps])
     max_ticks = max(ym, xm) + 2
     xm = max(MAX_REPETITIONS, xm)
     ym = max(MAX_REPETITIONS, ym)
@@ -249,7 +249,7 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     # create data containers
     data = np.zeros((xm + 1, ym + 1), dtype=int)
     data_primer = np.zeros((xm + 1, ym + 1), dtype=int)
-    for (c1, r1), (c2, r2) in zip(dedup_reps_i1, dedup_reps_i2):
+    for (c1, r1), (c2, r2) in dedup_reps:
         if c1 and c2:
             data[r1, r2] += 1
         if c1 and not c2:
@@ -259,14 +259,14 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
 
     # create colormap:
     cmap = matplotlib.cm.Reds
-    my_cmap = cmap(np.arange(int(cmap.N * 0.3), int(cmap.N * 0.9)))  # start from orange to deep red (but not the almost-black red)
+    my_cmap = cmap(np.arange(int(cmap.N * 0.15), int(cmap.N * 0.9)))  # start from orange to deep red (but not the almost-black red)
     my_cmap[0, -1] = 0.0  # Set alpha on the lowest element only
     my_cmap = ListedColormap(my_cmap)
 
     # plot pcolor
     plt.figure(figsize=(12, 8))
-    img2 = plt.pcolor(data_primer[:max_ticks, :max_ticks], cmap='Blues', alpha=0.4, edgecolor=(1.0, 1.0, 1.0, 0.0), lw=0, vmin=np.min(data_primer), vmax=np.max(data_primer)+0.01)
-    img1 = plt.pcolor(data[:max_ticks, :max_ticks], cmap=my_cmap, vmin=np.min(data), vmax=np.max(data)+0.01)
+    img2 = plt.pcolor(data_primer[:max_ticks, :max_ticks], cmap='Blues', alpha=0.4, edgecolor=(1.0, 1.0, 1.0, 0.0), lw=0, vmin=np.min(data_primer), vmax=np.max(data_primer) + 0.01)
+    img1 = plt.pcolor(data[:max_ticks, :max_ticks], cmap=my_cmap, vmin=np.min(data), vmax=np.max(data) + 0.01)
     plt.xticks()
     plt.ylabel('STR %d [%s]' % (index_rep + 1, seq.split('-')[-1]))
     plt.xlabel('STR %d [%s]' % (index_rep2 + 1, seq2.split('-')[-1]))
@@ -282,6 +282,7 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     # output it
     plt.savefig(out_prefix + '.pdf')
     plt.savefig(out_prefix + '.png')
+    plt.close()
 
 
 def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
@@ -336,6 +337,7 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     # output it
     plt.savefig(out_prefix + '.pdf')
     plt.savefig(out_prefix + '.png')
+    plt.close()
 
 
 def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, all_reads, motif_dir, motif_modules, index_rep, index_rep2, j, quiet=False):
@@ -344,7 +346,7 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
     :param quality_annotations: list(Annotation) - list of blue annotations
     :param filt_primer: list(Annotation) - list of grey annotations
     :param filtered_annotations: list(Annotation) - list of filtered out annotations
-    :param dedup_ap: list(Annotation) - deduplicated annotation pairs
+    :param dedup_ap: list(AnnotationPair) - deduplicated annotation pairs
     :param all_reads: int - number of all reads
     :param motif_dir: str - path to motif directory
     :param motif_modules: dict - motif modules dictionary from config
@@ -367,7 +369,8 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
 
         if index_rep2 is not None:
             # print("aps", len(dedup_ap[i]))
-            write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), dedup_ap, index_rep - 1, index_rep2 - 1, motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
+            write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations + filt_primer, index_rep - 1, index_rep2 - 1,
+                                    motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
             write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1, index_rep2 - 1)
         else:
             write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
@@ -375,6 +378,7 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
 
     write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
     write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer, quiet=quiet)
+
 
 def get_seq_from_module(module_dict):
     """

@@ -21,9 +21,9 @@ class SimpleFilter(DummyFilter):
         :return: bool - True if read has passed the filter
         """
         for seq, repetitions in self.filters:
-            if seq * repetitions not in read.sequence:
-                return False
-        return True
+            if seq * repetitions in read.sequence:
+                return True
+        return False
 
     def encapsulate_reader(self, reader):
         """

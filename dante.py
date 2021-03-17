@@ -59,14 +59,14 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         global annotators
         global filters
         global filter_on
-        global report_number
+        global report_every
         lock = l
         annotated_reads = ar
         filtered_reads = fr
         annotators = an
         filters = flt
         filter_on = f_on
-        report_number = report_num
+        report_every = report_num
 
         if PROFILE:
             global prof
@@ -80,6 +80,57 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
                     pass
 
             multiprocess.util.Finalize(None, fin, exitpriority=1)
+
+    def annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every, lock=None):
+        """
+        Annotate a single read with global Annotator object.
+        :param read: triple - read to be annotated
+        :param l: Lock - shared lock object for all processes
+        :param annotated_reads: Array - shared Array for all processes
+        :param filtered_reads: Array - shared Array for all processes
+        :param annotators: Annotators - shared Annotators object for all processes
+        :param filters: filter functions - filter functions for pre-filtering reads
+        :param filter_on: bool - filter is on?
+        :param report_every: int - how often to report progress
+        :param lock: lock object - if specified then use lock for printing
+        :return: tuple - annotated read (output of Annotator), read
+        """
+        # filter and annotate a read
+        annotation = [None for _ in range(len(annotators))]
+        for i, (annotator, filter) in enumerate(zip(annotators, filters)):
+            annot = None
+            if filter.filter_read(read):
+                annot = annotator.annotate(read)
+                annotation[i] = annot
+                annotated_reads[i] += 1
+                if filter_on and not annotation[i].is_annotated_right():
+                    annotation[i] = None
+
+                # was this read correctly annotated?
+                if config['general']['verbosity'] > 1:
+                    if lock is not None:
+                        lock.acquire()
+                    report.log_str('Read %15s annotated with Annotator %s Filter %s - %s' % (
+                        str(read), annotator, filter, 'OK' if annotation[i] is not None else ('FLT_FAIL' if annot is None else 'ANN_FAIL')))
+                    if lock is not None:
+                        lock.release()
+
+        # write down progress
+        filtered_reads.value += 1
+
+        # print progress
+        if report_every > 0 and filtered_reads.value % report_every == 0:
+            if lock is not None:
+                lock.acquire()
+            s = "\r    processed: %8d (passed filtering: %s) %s" % (filtered_reads.value, " ".join(map(str, annotated_reads)), '{duration}'.format(duration=datetime.now() - start_time))
+            report.log_str(s, stdout_too=False, priority=logging.DEBUG, flush=True)
+            sys.stdout.write(s)
+            sys.stdout.flush()
+            if lock is not None:
+                lock.release()
+
+        # return result
+        return annotation
 
     def annotate_read(read):
         """
@@ -98,39 +149,10 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         global annotators
         global filters
         global filter_on
-        global report_number
+        global report_every
 
         try:
-            # filter and annotate a read
-            annotation = [None for _ in range(len(annotators))]
-            for i, (annotator, filter) in enumerate(zip(annotators, filters)):
-                annot = None
-                if filter.filter_read(read):
-                    annot = annotator.annotate(read)
-                    annotation[i] = annot
-                    annotated_reads[i] += 1
-                    if filter_on and not annotation[i].is_annotated_right():
-                        annotation[i] = None
-
-                    # was this read correctly annotated?
-                    if config['general']['verbosity'] > 1:
-                        lock.acquire()
-                        report.log_str('Read %15s annotated with Annotator %s Filter %s - %s' % (
-                            str(read), annotator, filter, 'OK' if annotation[i] is not None else ('FLT_FAIL' if annot is None else 'ANN_FAIL')))
-                        lock.release()
-
-            # write down progress
-            filtered_reads.value += 1
-
-            # print progress
-            if report_number > 0 and filtered_reads.value % report_number == 0:
-                lock.acquire()
-                s = "\r    processed: %8d (passed filtering: %s) %s" % (filtered_reads.value, " ".join(map(str, annotated_reads)), '{duration}'.format(duration=datetime.now() - start_time))
-                report.log_str(s, stdout_too=False, priority=logging.DEBUG, flush=True)
-                sys.stdout.write(s)
-                sys.stdout.flush()
-                lock.release()
-
+            annotation = annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every, lock)
         except Exception as e:
             print("Exception in child process:")
             traceback.print_exc()
@@ -144,17 +166,26 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         return annotation
 
     # crate pool and initialize it with init_pool
-    pool = multiprocess.Pool(threads, initializer=init_pool, initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every))
-
-    # run all annotation and return
     res = [[] for _ in range(len(annotators))]
-    for partial_res in pool.map(annotate_read, reader, chunksize=100):
+    pool = None
+    if threads > 1 or config['general'].get('force_parallel', False):
+        # print('Running in parallel ({threads} cores)'.format(threads=threads))
+        pool = multiprocess.Pool(threads, initializer=init_pool, initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every))
+        results = pool.map(annotate_read, reader, chunksize=100)
+    else:
+        # print('Running sequentially')
+        results = (annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every) for read in reader)
+
+    # go through all results
+    for partial_res in results:
         for i, pr in enumerate(partial_res):
             if pr is not None:
                 res[i].append(pr)
 
-    pool.close()
-    pool.join()
+    if pool is not None:
+        pool.close()
+        pool.join()
+
     print("")
     return res, filtered_reads.value, annotated_reads
 

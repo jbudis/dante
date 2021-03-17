@@ -257,16 +257,13 @@ class AnnotationPair:
 
         # then return those that have more annotated modules, or bases:
 
-        def eval_info_value(ann):
+        def eval_info_value(ann: Annotation):
             """
             Evaluate the info value of an Annotation.
             :param ann: Annotation - to evaluate
             :return: int, int
             """
-            annotated_modules = 0 if self.ann1 is None else sum(self.ann1.module_repetitions) + 0 if self.ann2 is None else sum(self.ann2.module_repetitions)
-            annotated_bases = 0 if self.ann1 is None else sum(self.ann1.module_bases) + 0 if self.ann2 is None else sum(self.ann2.module_bases)
-
-            return annotated_modules, annotated_bases
+            return 0 if ann is None else sum(ann.module_repetitions), 0 if ann is None else sum(ann.module_bases)
 
         m1f, b1f = eval_info_value(self.ann1)
         m2f, b2f = eval_info_value(self.ann2)
