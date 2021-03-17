@@ -58,16 +58,16 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
                         help='The way of typing repetitive sequence with 1 repetition into YAML file. (default=1)',
                         default=1)
 
-    parser.add_argument('--pmf', type=int, help='Minimal length of flanking sequence to pass postfilter (default=5)',
+    parser.add_argument('--pmf', type=int, help='Minimum length of flanking sequence to pass postfilter (default=5)',
                         default=5)
     parser.add_argument('--pmfc', type=int,
-                        help='Minimal length of flanking sequence to pass postfilter for repetition pairs (default=3)',
+                        help='Minimum length of flanking sequence to pass postfilter for repetition pairs (default=3)',
                         default=3)
-    parser.add_argument('--pmr', type=int, help='Minimal number of repetitions to pass prefilter and postfilter (default=3)',
+    parser.add_argument('--pmr', type=int, help='Minimum number of repetitions to pass prefilter and postfilter (default=3)',
                         default=3)
 
     parser.add_argument('-m', type=int,
-                        help='minimal mapping quality to pass selection process')
+                        help='Minimum mapping quality to pass selection process')
 
     parser.add_argument('-e', type=int,
                         help='maximum number of errors in repetitive sequence (default=1)', default=1)
@@ -395,7 +395,7 @@ def write_bases_repetitions(bases, repetitions, rep_list, min_flank, index, back
     :param bases: list(int) - bases in postfilter - IN-PLACE CHANGE
     :param repetitions: list(int) - repetitions in postfilter - IN-PLACE CHANGE
     :param rep_list: list(Repetition) - sequences for motif
-    :param min_flank: int - minimal length of flanking sequence to pass postfilter
+    :param min_flank: int - minimum length of flanking sequence to pass postfilter
     :param index: int - index of current bases/repetition
     :param back: int - move backwards in list?
     """
@@ -423,8 +423,8 @@ def single_filter(rep_list, min_flank, min_rep):
     """
     Make single postfilters (1 repetitive sequence) and prefilter.
     :param rep_list: list(Repetition) - sequences for motif
-    :param min_flank: int - minimal length of flanking sequence to pass postfilter
-    :param min_rep: int - minimal number of repetitions to pass postfilter and prefilter
+    :param min_flank: int - minimum length of flanking sequence to pass postfilter
+    :param min_rep: int - minimum number of repetitions to pass postfilter and prefilter
     :return: postfilters - list(dict)
              prefilter - list(str)
     """
@@ -458,8 +458,8 @@ def complex_filter(rep_list, min_flank, min_rep, indexes):
     """
     Make complex postfilters (2 repetitive sequences).
     :param rep_list: list(Repetition) - sequences for motif
-    :param min_flank: int - minimal length of flanking sequence to pass postfilter
-    :param min_rep: int - minimal number of repetitions to pass postfilter
+    :param min_flank: int - minimum length of flanking sequence to pass postfilter
+    :param min_rep: int - minimum number of repetitions to pass postfilter
     :param indexes: list(int) - indexes of repetitive sequences
     :return: postfilters - list(dict)
     """
@@ -516,9 +516,9 @@ def make_filters(modules, min_flank, min_flank_complex, min_rep):
     """
     Make postfilter and prefilter for config file.
     :param modules: dict - sequences for motif in dict format
-    :param min_flank: int - minimal length of flanking sequence to pass postfilter
-    :param min_flank_complex: int - minimal length of flanking sequence to pass postfilter for repetition pairs
-    :param min_rep: int - minimal number of repetitions to pass postfilter and prefilter
+    :param min_flank: int - minimum length of flanking sequence to pass postfilter
+    :param min_flank_complex: int - minimum length of flanking sequence to pass postfilter for repetition pairs
+    :param min_rep: int - minimum number of repetitions to pass postfilter and prefilter
     :return: prefilter - dict
              postfilters - list of dict
     """
@@ -589,10 +589,10 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromos
     :param start: int - reference start
     :param end: int - reference end
     :param unmapped - boolean - include unmapped?
-    :param mapq: int - minimal mapping quality
-    :param min_flank: int - minimal length of flanking sequence to pass postfilter
-    :param min_flank_complex: int - minimal length of flanking sequence to pass postfilter for repetition pairs
-    :param min_rep: int - minimal number of repetitions to pass postfilter and prefilter
+    :param mapq: int - minimum mapping quality
+    :param min_flank: int - minimum length of flanking sequence to pass postfilter
+    :param min_flank_complex: int - minimum length of flanking sequence to pass postfilter for repetition pairs
+    :param min_rep: int - minimum number of repetitions to pass postfilter and prefilter
     :return: motif - dictionary
     """
 
