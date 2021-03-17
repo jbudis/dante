@@ -115,7 +115,7 @@ class ReadFile:
     SUPPORTED_FORMATS = ('sam', 'bam', 'fasta', 'fastq', 'fasta.gz', 'fastq.gz', 'fa', 'fq', 'fa.gz', 'fq.gz', 'txt')
     STRANDED_TYPES = ('yes', 'both', 'reverse')
 
-    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0, chromosome=None, ref_start=None, ref_end=None, unmapped=False):
+    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0, chromosome=None, ref_start=None, ref_end=None, unmapped=False, min_mapq=None):
         """
         Initialize ReadFile.
         :param file_path: str/None - file path or None if reads come from stdin
@@ -126,6 +126,7 @@ class ReadFile:
         :param chromosome: str - chromosome
         :param ref_start: int - reference start
         :param ref_end: int - reference end
+        :param min_mapq: int - minimal mapping quality to pass selection process
         :param unmapped: boolean - include unmapped reads?
         """
         self.file_path = file_path
@@ -138,9 +139,9 @@ class ReadFile:
 
         self.distribution = collections.defaultdict(int)
         
-        self.reader = self.load_reader(verbosity, chromosome, ref_start, ref_end, unmapped)
+        self.reader = self.load_reader(verbosity, chromosome, ref_start, ref_end, unmapped, min_mapq)
 
-    def load_reader(self, verbosity, chromosome=None, ref_start=None, ref_end=None, unmapped=False):
+    def load_reader(self, verbosity, chromosome=None, ref_start=None, ref_end=None, unmapped=False, min_mapq=None):
         """
         Return reader according to file type and file path.
         :param verbosity: int - how verbose are we
@@ -148,11 +149,12 @@ class ReadFile:
         :param ref_start: int - reference start
         :param ref_end: int - reference end
         :param unmapped: boolean - include unmapped reads?
+        :param min_mapq: int - minimal mapping quality to pass selection process
         :return: reader object
         """
         readers = {
             'sam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
-            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity, chromosome, ref_start, ref_end, unmapped),
+            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity, chromosome, ref_start, ref_end, unmapped, min_mapq),
             'fasta': lambda fn: ReadFile.iter_seqs_fasta(fn, False),
             'fastq': lambda fn: ReadFile.iter_seqs_fastq(fn, False),
             'fasta.gz': lambda fn: ReadFile.iter_seqs_fasta(fn, True),
@@ -218,7 +220,7 @@ class ReadFile:
         return distrib_array[:up_to]
 
     @staticmethod
-    def iter_seqs_bam(file_name, verbosity=0, chromosome=None, pos_start=None, pos_end=None, unmapped=False):
+    def iter_seqs_bam(file_name, verbosity=0, chromosome=None, pos_start=None, pos_end=None, unmapped=False, min_mapq=None):
         """
         Reader for bam files.
         :param file_name: str - file path to open
@@ -227,6 +229,7 @@ class ReadFile:
         :param pos_start: int - reference start
         :param pos_end: int - reference end
         :param unmapped: boolean - include unmapped reads?
+        :param min_mapq: int - minimal mapping quality to pass selection process
         :return: iterator - reads a bam file iteratively
         """
 
@@ -256,6 +259,8 @@ class ReadFile:
                 ref_end = read.reference_end
                 ref_id = str(read.reference_name)
                 mapq = read.mapping_quality
+                if min_mapq is not None and mapq < min_mapq:
+                    continue
                 ref_id, left_pair_from_name = extract_pair(ref_id, None)
                 if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair and verbosity > 0:
                     warn = "WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s" % (str(read))
