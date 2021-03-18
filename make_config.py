@@ -712,7 +712,7 @@ if __name__ == "__main__":
                 right_flank = seq_new[-flank_len:]
 
         # make motif
-        motif = make_motif(disease, description, repetitions, left_flank, right_flank, seq_type, chromosome, ref_start,
+        motif = make_motif(disease, description, new_repetitions, left_flank, right_flank, seq_type, chromosome, ref_start,
                            ref_end, include_unmapped, min_mapq, min_flank_post, min_flank_post_complex, min_rep_post)
 
         # check duplicate modules
