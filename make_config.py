@@ -70,7 +70,7 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
                         help='Minimum mapping quality to pass selection process')
 
     parser.add_argument('-e', type=int,
-                        help='maximum number of errors in repetitive sequence (default=1)', default=1)
+                        help='Maximum number of errors in repetitive sequence from table compared to reference sequence (default=1)', default=1)
 
     parser.add_argument('-u', help='Include unmapped reads', action="store_true")
     parser.add_argument('-r', help='Remove current motifs in YAML configuration file', action="store_true")
@@ -236,9 +236,9 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1):
 
     rep_list = deepcopy(list_rep)
     error = False
+    n_errors = 0
 
     for i, repetition in enumerate(rep_list):
-        n_errors = 0
         rep_seq = re.sub('N', '.', repetition.seq)
 
         for zac in range(len(rep_seq)):
@@ -257,6 +257,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1):
                 while re.match(prev_seq, sequence):
                     sequence = sequence[len(prev_seq):]
                     prev.num += 1
+                if prev.num > list_rep[i-1].num:
+                    prev.num -= n_errors
 
             else:
                 print(
@@ -281,6 +283,7 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1):
                     seq_left = seq_left + sequence[:ind]
                     sequence = sequence[ind + len(rep_seq):]
 
+        n_errors = 0
         for r in range(repetition.num):
             if re.match(rep_seq, sequence):
                 sequence = sequence[len(rep_seq):]
@@ -312,6 +315,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1):
         while re.match(last_seq, sequence):
             sequence = sequence[len(last_seq):]
             last.num += 1
+        if last.num > list_rep[-1].num:
+            last.num -= n_errors
 
     if sequence != '':
         print('Attempt to repair failed. Adding nucleotides to right flank sequence')
@@ -334,7 +339,7 @@ def check_left_flank(seq_left, list_rep):
     first_seq = re.sub('N', '.', first.seq)
 
     if re.match(first_seq, seq_left[-len(first_seq):]):
-        print('Repetitive sequence find in flank region. Adding this sequence into repetitions.')
+        print('Repetitive sequence find in left flank region. Adding this sequence into repetitions.')
         while re.match(first_seq, seq_left[-len(first_seq):]):
             # cut repetitive sequence from flank sequence and add it to the list of repetitive sequences
             seq_left = seq_left[:-len(first_seq)]
@@ -355,7 +360,7 @@ def check_right_flank(seq_right, list_rep):
     last_seq = re.sub('N', '.', last.seq)
 
     if re.match(last_seq, seq_right):
-        print('Repetitive sequence find in flank region. Adding this sequence into repetitions.')
+        print('Repetitive sequence find in right flank region. Adding this sequence into repetitions.')
         while re.match(last_seq, seq_right):
             # cut repetitive sequence from flank sequence and add it to the list of repetitive sequences
             seq_right = seq_right[len(last_seq):]
@@ -612,7 +617,7 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromos
 
 
 def print_report(n_motifs, without_corrections, removed_repetitions, decreased_repetitions, increased_repetitions,
-                 errors_in_bases, max_errors, errors_in_table):
+                 errors_in_bases, max_errors, errors_in_table, length_flank, in_config):
     """
     Print final report.
     :param n_motifs: int - number of all motifs
@@ -623,11 +628,14 @@ def print_report(n_motifs, without_corrections, removed_repetitions, decreased_r
     :param errors_in_bases: int - number of motifs where error in bases was found
     :param max_errors: int - maximum number of errors in repetitions
     :param errors_in_table: int - number of motifs with invalid parameters in table
+    :param length_flank: int - length of flank sequence
+    :param in_config: int - number of motifs in config.file
     """
     print()
     print(f'From available {n_motifs} motifs:')
-    print(f'    {without_corrections} converted without problems')
-    print(f'    {n_motifs - without_corrections - len(removed_repetitions) - errors_in_table} converted after error correction')
+    print(f'    {n_motifs - len(removed_repetitions) - errors_in_table} converted')
+    print(f'        {without_corrections} converted without problems')
+    print(f'        {n_motifs - without_corrections - len(removed_repetitions) - errors_in_table} converted after error correction')
     print(f'        Corrections:')
     print(f'            {decreased_repetitions} decreased repetitions')
     print(f'            {increased_repetitions} increased repetitions')
@@ -636,9 +644,11 @@ def print_report(n_motifs, without_corrections, removed_repetitions, decreased_r
 
     print(f'    {len(removed_repetitions)} removed due to failed conversion')
     for ref_seq, reps in removed_repetitions:
-        print(f'        Reference sequence: {ref_seq}')
-        print(f'        Repetitions in table: {reps}')
-    print(f'    {errors_in_table} removed due to error in table (invalid reference genome or no repetitions)')
+        print(f'        Reference sequence: {ref_seq[length_flank:-length_flank]}')
+        print(f'        Repetitions in table: {reps}\n')
+    print(f'    {errors_in_table} removed due to error in table (invalid reference genome or no repetitions)\n')
+
+    print(f'{in_config} motifs are in config file -> {n_motifs - len(removed_repetitions) - errors_in_table - in_config} converted motifs were removed in deduplication process')
 
 
 """
@@ -678,19 +688,22 @@ if __name__ == "__main__":
         # check if reference sequence and repetitive sequence are same (repair repetitive sequence if they are not same)
         new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, flank_len, max_errors)
 
-        if not new_repetitions:
-            rep_rem.append([ref_sequence, repetitions])
-            continue
-
         new_errors = False
-
+        under_half = False
         for new_rep, old_rep in zip(new_repetitions, repetitions):
-            if new_rep.num < old_rep.num:
+            if new_rep.num < int(old_rep.num / 2):
+                rep_rem.append([ref_sequence, repetitions])
+                under_half = True
+                break
+            elif new_rep.num < old_rep.num:
                 rep_dec += 1
                 new_errors = True
             elif new_rep.num > old_rep.num:
                 rep_inc += 1
                 new_errors = True
+
+        if under_half:
+            continue
 
         if seq_error:
             er_in_bases += 1
@@ -731,4 +744,4 @@ if __name__ == "__main__":
     with open(path, 'w') as file:
         yaml.dump(config, file)
 
-    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, max_errors, er_in_table)
+    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, max_errors, er_in_table, flank_len, len(motifs))
