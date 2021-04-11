@@ -648,7 +648,7 @@ def print_report(n_motifs, without_corrections, removed_repetitions, decreased_r
         print(f'        Repetitions in table: {reps}\n')
     print(f'    {errors_in_table} removed due to error in table (invalid reference genome or no repetitions)\n')
 
-    print(f'{in_config} motifs are in config file -> {n_motifs - len(removed_repetitions) - errors_in_table - in_config} converted motifs were removed in deduplication process')
+    print(f'{in_config} motifs written into config file -> {n_motifs - len(removed_repetitions) - errors_in_table - in_config} converted motifs were removed in deduplication process')
 
 
 """
@@ -738,7 +738,10 @@ if __name__ == "__main__":
         if new_motif:
             motifs.append(motif)
 
-    config['motifs'] = motifs
+    if 'motifs' in config:
+        config['motifs'].extend(motifs)
+    else:
+        config['motifs'] = motifs
 
     # write config dictionary into .yaml file
     with open(path, 'w') as file:
