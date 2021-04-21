@@ -36,12 +36,17 @@ def load_arguments():
         parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                          description=textwrap.dedent(description))
 
-        required = parser.add_argument_group('Required')
-        required.add_argument('config_file', type=nonempty_file, help="YAML configuration file.")
+        required = parser.add_argument_group('Config files')
+        required.add_argument('config_file', type=nonempty_file, help='YAML configuration file.')
+        required.add_argument('--motif-file', type=nonempty_file, help='YAML configuration file with motifs.')
+
+        options = parser.add_argument_group('Options')
+        options.add_argument('--max-motifs', type=int, help='Maximal number of motifs to load. Default: All', default=None)
+        options.add_argument('--cpu', type=int, help='Overwrite config number of CPUs. Default: as in config file', default=None)
 
         args = parser.parse_args()
     except argparse.ArgumentTypeError as e:
-        print("ERROR: Argument parser error. " + str(e.message))
+        print('ERROR: Argument parser error. ' + str(e.message))
         exit(-1)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,10 +61,21 @@ def load_arguments():
         print('ERROR: Failed to load default config file "%s/input_data/default.yaml"' % script_dir)
         exit(-1)
 
+    # load external motifs
+    if args.motif_file is not None:
+        motifs = arguments.yaml_reader.load_arguments(args.motif_file)
+        if motifs is not None:
+            config['motifs'] = motifs
+    # change cpu levels
+    if args.cpu is not None:
+        config['general']['cpu'] = args.cpu
+    # adjust number of motifs
+    if args.max_motifs is not None:
+        config['motifs'] = config['motifs'][:args.max_motifs]
+
     try:
         if not os.path.exists(config['general']['output_dir']):
             os.makedirs(config['general']['output_dir'])
-        #basename = args.config_file.split('/')[-1]
         basename = 'config.yaml'
         config_output = '%s/%s' % (config['general']['output_dir'], basename)
         arguments.yaml_reader.save_arguments(config, config_output)

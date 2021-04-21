@@ -357,7 +357,7 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
     :return: None
     """
     # create dir if not exists:
-    if not os.path.exists(motif_dir):
+    if (not quiet or len(quality_annotations) > 0 or len(filt_primer) > 0) and not os.path.exists(motif_dir):
         os.makedirs(motif_dir)
 
     # write output files
@@ -376,8 +376,10 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
             write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
             write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1)
 
-    write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
-    write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer, quiet=quiet)
+    if not quiet or len(quality_annotations) > 0:
+        write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
+    if not quiet or len(filt_primer) > 0:
+        write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer, quiet=quiet)
 
 
 def get_seq_from_module(module_dict):

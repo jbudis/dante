@@ -186,8 +186,33 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         pool.close()
         pool.join()
 
-    print("")
+    if report_every > 0:
+        print('')
     return res, filtered_reads.value, annotated_reads
+
+
+def construct_annotator(motif):
+    """
+    Construct Annotator and prefilter based on motif.
+    :param motif: dict - motif specification
+    :return: Annotator, *Filter - annotator and prefilter constructed
+    """
+    sequence = ','.join([module_dict['seq'] for module_dict in motif['modules']])
+    motif_tuple = report.seq_into_tuple(sequence)
+
+    # initialize annotator
+    if not config['general']['quiet_mode']:
+        report.log_str("Motif %12s: Constructing annotator for sequence %s" % (motif['full_name'], sequence))
+    annotator = Annotator(motif_tuple, config['annotation']['delete_prob'], config['annotation']['insert_prob'],
+                          config['annotation']['max_delete_skips'], config['annotation']['motif_frequency'],
+                          config['annotation']['snp_chance'])
+
+    # initialize filter
+    read_filter = prefiltering.create_filter(motif['prefilter'], motif_tuple)
+    if not config['general']['quiet_mode']:
+        report.log_str("Motif %12s: Filter constructed: %s" % (motif['full_name'], str(read_filter)))
+
+    return annotator, read_filter
 
 
 """
@@ -222,19 +247,21 @@ if __name__ == "__main__":
     # go through all motifs and construct annotators and filters:
     annotators = []
     filters = []
-    for i, motif in enumerate(config['motifs']):
-        sequence = ','.join([module_dict['seq'] for module_dict in motif['modules']])
-        motif_tuple = report.seq_into_tuple(sequence)
 
-        # initialize annotator
-        report.log_str("Motif %12s: Constructing annotator for sequence %s" % (motif['full_name'], sequence))
-        annotators.append(Annotator(motif_tuple, config['annotation']['delete_prob'], config['annotation']['insert_prob'],
-                                    config['annotation']['max_delete_skips'], config['annotation']['motif_frequency'],
-                                    config['annotation']['snp_chance']))
+    # create annotator generator
+    if len(config['motifs']) > 100 and config['general']['cpu'] > 1:
+        report.log_str('Annotators processing in parallel on {cpu} cores.'.format(cpu=config['general']['cpu']))
+        pool = multiprocess.Pool(config['general']['cpu'])
+        results = pool.imap(construct_annotator, config['motifs'])
+    else:
+        report.log_str('Annotators processing sequentially.')
+        results = (construct_annotator(motif) for motif in config['motifs'])
 
-        # initialize filter
-        read_filter = prefiltering.create_filter(motif['prefilter'], motif_tuple)
-        report.log_str("Motif %12s: Filter constructed: %s" % (motif['full_name'], str(read_filter)))
+    # fill annotators
+    for i, (annotator, read_filter) in enumerate(results):
+        if config['general']['quiet_mode'] and i % 100 == 0:
+            report.log_str('Constructing annotators: {i:6d}/{cnt:6d}   {date:%Y-%m-%d %H:%M:%S}'.format(i=i, cnt=len(config['motifs']), date=datetime.now()))
+        annotators.append(annotator)
         filters.append(read_filter)
 
     # main annotation
@@ -266,25 +293,29 @@ if __name__ == "__main__":
             # annotate specified reads for every motif
             report.log_str(f"Parsing file {read_filename} (bam type)")
             for i, motif in enumerate(config['motifs']):
+                if config['general']['quiet_mode'] and i % 100 == 0:
+                    report.log_str('Running annotators: {i:6d}/{cnt:6d}   {date:%Y-%m-%d %H:%M:%S}'.format(i=i, cnt=len(config['motifs']), date=datetime.now()))
                 min_mapq = None if 'min_mapq' not in motif else motif['min_mapq']
                 read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, config['general']['verbosity'], motif['chromosome'], motif['ref_start'], motif['ref_end'], min_mapq=min_mapq)
 
                 # initialize annotator and filter for current motif
                 annot = [annotators[i]]
                 filt = [filters[i]]
+                areads = [annotated_reads[i]]
+                readers.append(read_file)
 
                 # run annotator for current motif
-                report.log_str(f"Running annotator on {config['general']['cpu']} process(es) for file {read_filename} and motif {motif['description']}")
-                readers.append(read_file)
-                next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annot, filt, config['general']['cpu'], annotated_reads, all_reads,
-                                                                              not config['general']['output_all'], config['general']['report_every'])
+                report.log_str(f"Running annotator on {config['general']['cpu']} process(es) for file {read_filename} and motif {motif['description']}",
+                               stdout_too=not config['general']['quiet_mode'])
+                next_annotations, cur_reads, areads = run_annot_iter(read_file, annot, filt, 1, areads, all_reads,
+                                                                     not config['general']['output_all'], 0 if config['general']['quiet_mode'] else config['general']['report_every'])
                 new_reads = cur_reads - all_reads
                 all_reads += new_reads
-
+                annotated_reads[i] = areads[0]
                 annotations[i].extend(next_annotations[0])
 
                 # write stats for current file and motif
-                report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
+                report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))), stdout_too=not config['general']['quiet_mode'])
 
         if not bam or include_unmapped:
             if read_filename == 'sys.stdin':
@@ -298,14 +329,15 @@ if __name__ == "__main__":
             report.log_str("Running %d annotator(s) on %2d process(es) for file %s" % (len(annotators), config['general']['cpu'], read_filename))
             readers.append(read_file)
             next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads, all_reads,
-                                                                          not config['general']['output_all'], config['general']['report_every'])
+                                                                          not config['general']['output_all'], 0 if config['general']['quiet_mode'] else config['general']['report_every'])
             new_reads = cur_reads - all_reads
             all_reads += new_reads
             for i, pr in enumerate(next_annotations):
                 annotations[i].extend(pr)
 
             # write stats for current file
-            report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
+            if not config['general']['quiet_mode']:
+                report.log_str("Reads: %10d, annotated: %s" % (new_reads, ' '.join(map(str, map(len, next_annotations)))))
 
     # write read distribution
     report.write_read_distribution('%s/read_distr.npy' % config['general']['output_dir'], readers)
@@ -313,7 +345,7 @@ if __name__ == "__main__":
     # write stats
     for i, (motif, annot) in enumerate(zip(config['motifs'], annotations)):
 
-        report.log_str('Motif %12s: Kept %8d/%8d reads' % (motif['full_name'], len(annot), all_reads))
+        report.log_str('Motif %12s: Kept %8d/%8d reads' % (motif['full_name'], len(annot), all_reads), stdout_too=not config['general']['quiet_mode'])
 
         # setup motif sequences and dir
         motif_dir = '%s/%s' % (config['general']['output_dir'], motif['full_name'])
@@ -334,7 +366,7 @@ if __name__ == "__main__":
 
         # log it
         report.log_str('Motif %12s: %8d reads -- %8d pairs (%8d deduplicated + %8d PCR duplicates)' % (
-            motif['full_name'], len(annot), len(annotation_pairs), len(dedup_ap[i]), len(duplicates)))
+            motif['full_name'], len(annot), len(annotation_pairs), len(dedup_ap[i]), len(duplicates)), stdout_too=not config['general']['quiet_mode'])
 
         # go through all motifs
         for j, pstf in enumerate(motif['postfilter']):
@@ -351,15 +383,18 @@ if __name__ == "__main__":
             dedup_annot = annotation.pairs_to_annotations_pick(dedup_ap[i], index_rep - 1)
 
             # log it
-            report.log_str('Motif %12s: Extracted %8d reads from %8d pairs' % (motif['full_name'], len(dedup_annot), len(dedup_ap[i])))
+            if not config['general']['quiet_mode']:
+                report.log_str('Motif %12s: Extracted %8d reads from %8d pairs' % (motif['full_name'], len(dedup_annot), len(dedup_ap[i])), stdout_too=not config['general']['quiet_mode'])
 
             # get filtered stuff
-            report.log_str("Motif %12s: Running post-filtering for %s required repetitions and %s required bases" % (motif['full_name'], pstf['repetitions'], pstf['bases']))
+            report.log_str("Motif %12s: Running post-filtering for %s required repetitions and %s required bases" % (motif['full_name'], pstf['repetitions'], pstf['bases']),
+                           stdout_too=not config['general']['quiet_mode'])
             qual_annot, primer_annot, filt_annot = postfilter_class.get_filtered(dedup_annot)
-            report.log_str("Motif %12s: Post-filtered %5d (at least one primer %5d), remained %5d" % (motif['full_name'], len(filt_annot), len(primer_annot), len(qual_annot)))
+            report.log_str("Motif %12s: Post-filtered %5d (at least one primer %5d), remained %5d" % (motif['full_name'], len(filt_annot), len(primer_annot), len(qual_annot)),
+                           stdout_too=not config['general']['quiet_mode'])
 
             # write it to files
-            report.log_str("Motif %12s: Generating output files into %s" % (motif['full_name'], motif_dir))
+            report.log_str("Motif %12s: Generating output files into %s" % (motif['full_name'], motif_dir), stdout_too=not config['general']['quiet_mode'])
             report.write_all(qual_annot, primer_annot, filt_annot, dedup_ap[i], all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j, config['general']['quiet_mode'])
 
     # -------- All_Call part of DANTE
