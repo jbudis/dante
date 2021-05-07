@@ -154,7 +154,7 @@ def generate_row(motif, sequence, confidence, postfilter, reads_blue, reads_grey
         return row_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'], motif_name=motif, motif_seq=smaller_seq, reads_blue=reads_blue, reads_grey=reads_grey,
                                        post_errors=errors)
     else:
-        (c, a1, a2, c1, c2) = confidence
+        (c, a1, a2, c1, c2, _, _, _, _) = confidence
         if a1 == 0 and a2 == 0:
             a1 = 'BG'
             a2 = 'BG'
@@ -185,7 +185,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     if confidence is None:
         result = '-- (---.-%%) -- (---.-%%) total ---.-%%'
     else:
-        (c, a1, a2, c1, c2) = confidence
+        (c, a1, a2, c1, c2, _, _, _, _) = confidence
         if (a1 == 'B' and a2 == 'B') or (a1 == 0 and a2 == 0):
             result = 'BG %5.1f%%' % (c * 100)
         else:

@@ -241,6 +241,7 @@ if __name__ == "__main__":
     # print arguments (too clunky)
     # report.log_str(arguments.save_arguments(config))
 
+    #if not config['skip_annotation']:
     # deduplicated reads
     dedup_ap = [[] for _ in range(len(config['motifs']))]
 
@@ -431,7 +432,7 @@ if __name__ == "__main__":
             dedup_annot = annotation.pairs_to_annotations_pick(dedup_ap[i], index_rep - 1)
 
             # get filtered stuff
-            qual_annot, primer_annot, filt_annot = postfilter_class.get_filtered(dedup_annot)
+            qual_annot, primer_annot, _ = postfilter_class.get_filtered(dedup_annot)
             postfilter_bases = postfilter_class.get_filtering_bases()
 
             # load read distribution
@@ -449,7 +450,7 @@ if __name__ == "__main__":
             # write the report
             confidence = report.read_all_call('%s/allcall_%d.txt' % (motif_dir, j + 1))
             if confidence is not None:
-                conf, a1, a2, c1, c2 = confidence
+                conf, a1, a2, c1, c2, _, _, _, _ = confidence
                 if not config['general']['quiet_mode']:
                     if isinstance(a1, int) and a1 > 0:
                         report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep - 1, allele=a1)

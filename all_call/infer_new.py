@@ -517,8 +517,7 @@ class Inference:
 
         return lh_array, best, best_sym
 
-    @staticmethod
-    def get_confidence(lh_array, predicted):
+    def get_confidence(self, lh_array, predicted):
         """
         Get confidence of a prediction.
         :param lh_array: 2D-ndarray - log likelihoods of the prediction
@@ -533,7 +532,12 @@ class Inference:
         confidence1 = np.sum(np.exp(lh_corr_array[predicted[0], :])) / lh_sum
         confidence2 = np.sum(np.exp(lh_corr_array[:, predicted[1]])) / lh_sum
 
-        return confidence, confidence1, confidence2
+        confidence_back = np.exp(lh_corr_array[0, 0]) / lh_sum
+        confidence_back_all = np.sum(np.exp(lh_corr_array[0, :])) / lh_sum
+        confidence_exp = np.exp(lh_corr_array[0, self.max_rep]) / lh_sum
+        confidence_exp_all = np.sum(np.exp(lh_corr_array[:, self.max_rep])) / lh_sum
+
+        return confidence, confidence1, confidence2, confidence_back, confidence_back_all, confidence_exp, confidence_exp_all
 
     @staticmethod
     def write_output(file_desc, predicted, conf, name):
@@ -549,7 +553,11 @@ class Inference:
         def write_output_fd(f, predicted, conf, name):
             print("Predicted alleles for %s: (confidence = %5.1f%%)" % (str(name), conf[0] * 100.0), file=f)
             print("\t%3s (confidence = %5.1f%%)" % (str(predicted[0]), conf[1] * 100.0), file=f)
-            print("\t%3s (confidence = %5.1f%%)\n" % (str(predicted[1]), conf[2] * 100.0), file=f)
+            print("\t%3s (confidence = %5.1f%%)" % (str(predicted[1]), conf[2] * 100.0), file=f)
+            print("B   B  %7.3f%%" % (conf[3] * 100.0), file=f)
+            print("all B  %7.3f%%" % (conf[4] * 100.0), file=f)
+            print("B   E  %7.3f%%" % (conf[5] * 100.0), file=f)
+            print("all E  %7.3f%%" % (conf[6] * 100.0), file=f)
 
         if type(file_desc) is str:
             with open(file_desc, 'w') as f:
@@ -573,7 +581,6 @@ class Inference:
         if len(annotations) == 0 and len(filt_annotations) == 0:
             # write output
             # self.write_output(file_output, ('B', 'B'), (0.0, 0.0, 0.0), name)
-
             return None
 
         # infer likelihoods

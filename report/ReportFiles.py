@@ -420,10 +420,18 @@ def read_all_call(allcall_file):
             pass
         return num, conf
 
+    def get_probability(line):
+        perc = line.strip().split()[-1][:-1]
+        return float(perc)
+
     a1, c1 = get_allele(lines[1])
     a2, c2 = get_allele(lines[2])
+    c3 = get_probability(lines[3])
+    c4 = get_probability(lines[4])
+    c5 = get_probability(lines[5])
+    c6 = get_probability(lines[6])
 
-    return overall_conf, a1, a2, c1, c2
+    return overall_conf, a1, a2, c1, c2, c3, c4, c5, c6
 
 
 def custom_format(template, **kwargs):
@@ -504,6 +512,10 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
         result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 prediction'] = confidence[2]
         result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 1 confidence'] = confidence[3]
         result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Allele 2 confidence'] = confidence[4]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Both Background prob.'] = confidence[5]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'One Background prob.'] = confidence[6]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'Background Expanded prob.'] = confidence[7]
+        result_table.at['%s_%s' % (motif_name, postfilter['index_rep']), 'One Expanded prob.'] = confidence[8]
 
     return result_table
 
@@ -519,7 +531,8 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
     """
     # tsv file with table:
     result_table = pd.DataFrame([], columns=['Motif', 'Sequence', 'Repetition index', 'Postfilter bases', 'Postfilter repetitions', 'Overall confidence',
-                                             'Allele 1 prediction', 'Allele 1 confidence', 'Allele 2 prediction', 'Allele 2 confidence', 'Reads (full)', 'Reads (partial)'])
+                                             'Allele 1 prediction', 'Allele 1 confidence', 'Allele 2 prediction', 'Allele 2 confidence', 'Reads (full)', 'Reads (partial)',
+                                             'Both Background prob.', 'One Background prob.', 'Background Expanded prob.', 'One Expanded prob.'])
 
     # merge all_profiles:
     all_profiles = '%s/all_profiles.txt' % output_dir
