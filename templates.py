@@ -46,4 +46,4 @@ the following files:
 '''
 
 START_TIME = '''DANTE = "Da Amazing NucleoTide Exposer"
-DANTE Starting    : {start: %Y-%m-%d %H:%M:%S}'''
+DANTE Starting    : {start:%Y-%m-%d %H:%M:%S}'''

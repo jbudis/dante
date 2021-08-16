@@ -1,7 +1,5 @@
-from __future__ import print_function
-
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-import train
+import all_call.train
 import numpy as np
 import json
 import sys
@@ -18,7 +16,7 @@ DEFAULT_READ_DROP_REL = (1.18332, -0.0475454)
 DEFAULT_FIT_FUNCTION = "linear"
 
 # functions for training
-fit_functions = {"const": train.const_rate, "linear": train.linear_rate, "n2": train.n2_rate, "exp": train.exp_rate}
+fit_functions = {"const": all_call.train.const_rate, "linear": all_call.train.linear_rate, "n2": all_call.train.n2_rate, "exp": all_call.train.exp_rate}
 
 
 def load_arguments():
@@ -183,7 +181,7 @@ def merge_profiles(profiles, output_file):
 
         # write to aggregated file:
         current = pd.read_csv(profile, sep='\t', header=None, names=['index'] + range(max_cols), index_col=0, parse_dates=True, engine='python')
-        current.index = map(lambda x: '%s_%s' % (name, x), current.index)
+        current.index = list(map(lambda x: '%s_%s' % (name, x), current.index))
         all_profiles = pd.concat([all_profiles, current])
 
     # fill not available data:
@@ -335,7 +333,7 @@ def read_params(filename):
     with open(filename) as f:
         lines = f.readlines()
         fit_function = lines[1].strip().split()[1]
-        split = map(float, lines[-1].strip().split())
+        split = list(map(float, lines[-1].strip().split()))
 
     if len(split) < 8:
         print("ERROR: parameters were not read successfully, using defaults!", file=sys.stderr)

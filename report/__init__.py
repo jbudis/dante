@@ -1,12 +1,12 @@
-from ReportFiles import write_annotations, write_annotation_pairs
-from ReportFiles import write_summary_statistics
-from ReportFiles import write_histogram
-from ReportFiles import write_histogram_image, write_histogram_image2d
-from ReportFiles import write_alignment
-from ReportFiles import write_report
-from ReportFiles import write_read_distribution, load_read_distribution
-from ReportFiles import seq_into_tuple, tuple_into_seq
-from ReportFiles import read_all_call
-from ReportFiles import write_all
+from report.ReportFiles import write_annotations, write_annotation_pairs
+from report.ReportFiles import write_summary_statistics
+from report.ReportFiles import write_histogram
+from report.ReportFiles import write_histogram_image, write_histogram_image2d
+from report.ReportFiles import write_alignment
+from report.ReportFiles import write_report
+from report.ReportFiles import write_read_distribution, load_read_distribution
+from report.ReportFiles import seq_into_tuple, tuple_into_seq
+from report.ReportFiles import read_all_call
+from report.ReportFiles import write_all
 
-from Logger import configure_logger, log_str
+from report.Logger import configure_logger, log_str

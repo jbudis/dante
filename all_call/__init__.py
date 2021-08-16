@@ -1,5 +1,5 @@
-import infer
-import train
-import input
+import all_call.infer
+import all_call.train
+import all_call.input
 
-from infer_new import Inference
+from all_call.infer_new import Inference

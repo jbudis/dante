@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import sys
 import math
 import copy
@@ -255,7 +253,7 @@ def linear_rate(n, p1=0.0, p2=1.0, p3=1.0):
     return p1 + p2 * n
 
 
-def relative_read_drop_train_linear((a1, a2), p1=0.0, p2=1.0, p3=1.0):
+def relative_read_drop_train_linear(a, p1=0.0, p2=1.0, p3=1.0):
     """
     Ratio of linear functions for relative read drop quantification.
     :param a: (list(int), list(int)) - allele numbers
@@ -263,6 +261,7 @@ def relative_read_drop_train_linear((a1, a2), p1=0.0, p2=1.0, p3=1.0):
     :param p2: float - linear parameter
     :return: float - ratio of the two linear functions
     """
+    a1, a2 = a
     return np.array([linear_rate(aa1, p1, p2) / linear_rate(aa2, p1, p2) for aa1, aa2 in zip(a1, a2)])
 
 
@@ -347,7 +346,7 @@ def likelihood_simple(model_d, true_d):
     :param true_d: ndarray - true distribution
     :return: float - log-likelihood of generation of the true distribution out of the model distribution
     """
-    res = sum(map(lambda (m, t): 0.0 if t == 0.0 else (minf if m == 0.0 else t * math.log(m)), zip(model_d, true_d)))
+    res = sum(map(lambda m, t: 0.0 if t == 0.0 else (minf if m == 0.0 else t * math.log(m)), zip(model_d, true_d)))
     return minf if np.isnan(res) else res
 
 
@@ -396,7 +395,7 @@ def display(model_tmp, samples, filename, min_allele=4):
             data.append((k, v))
 
     data = sorted(data, key=lambda xx: xx[0])
-    data = filter(lambda xx: xx[0] >= min_allele, data)
+    data = list(filter(lambda xx: xx[0] >= min_allele, data))
 
     x = np.arange(len(data[0][1]))
 
@@ -526,7 +525,7 @@ def train_read_drop_rel2(nums):
     """
     params_read_drop = None
     x, y = flatten(nums)
-    x = map(lambda a: a[0] / float(a[1]), x)
+    x = list(map(lambda a: a[0] / float(a[1]), x))
     print(x, y)
     v_lin_err = np.vectorize(linear_rate)
     try:
@@ -545,7 +544,7 @@ def train_read_drop_rel3(nums):
     """
     params_read_drop = None
     x, y = flatten(nums)
-    x = map(list, zip(*x))
+    x = list(map(list, zip(*x)))
 
     # v_rdl_err = np.vectorize(relative_read_drop_train_linear)
     try:

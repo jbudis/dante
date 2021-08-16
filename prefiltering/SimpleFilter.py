@@ -1,4 +1,4 @@
-from DummyFilter import DummyFilter
+from prefiltering.DummyFilter import DummyFilter
 
 
 class SimpleFilter(DummyFilter):
@@ -16,14 +16,14 @@ class SimpleFilter(DummyFilter):
 
     def filter_read(self, read):
         """
-        Test whether the read has passsed the filter.
+        Test whether the read has passed the filter.
         :param read: (3tuple) - the specified read.
         :return: bool - True if read has passed the filter
         """
         for seq, repetitions in self.filters:
-            if seq * repetitions not in read.sequence:
-                return False
-        return True
+            if seq * repetitions in read.sequence:
+                return True
+        return False
 
     def encapsulate_reader(self, reader):
         """

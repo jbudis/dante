@@ -1,6 +1,5 @@
 import pysam
 import gzip
-from string import maketrans
 import logging
 import report
 import sys
@@ -46,11 +45,11 @@ class Read:
     Class for encapsulating the read object.
     """
 
-    translate_table = maketrans('ACGT', 'TGCA')
+    translate_table = str.maketrans('ACGT', 'TGCA')
 
     def __init__(self, name, sequence, quality=None, map_qual=None, chromosome=None, ref_start=None, ref_end=None, left_pair=None, complement=False):
         """
-        Initialie the Read object
+        Initialize the Read object
         :param name: str - read id
         :param sequence: str - sequence
         :param quality: str - sequencing quality
@@ -101,6 +100,7 @@ class Read:
         Return a reverse complement of this read.
         :return: Read - reversed read
         """
+
         reversed_sequence = self.sequence[::-1].translate(self.translate_table)
         reversed_quality = self.quality[::-1]
         return Read(self.name, reversed_sequence, reversed_quality, self.map_qual, chromosome=self.chromosome, ref_start=self.ref_start, ref_end=self.ref_end,
@@ -115,14 +115,19 @@ class ReadFile:
     SUPPORTED_FORMATS = ('sam', 'bam', 'fasta', 'fastq', 'fasta.gz', 'fastq.gz', 'fa', 'fq', 'fa.gz', 'fq.gz', 'txt')
     STRANDED_TYPES = ('yes', 'both', 'reverse')
 
-    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0):
+    def __init__(self, file_path, stranded, maximal_reads=None, file_type=None, verbosity=0, chromosome=None, ref_start=None, ref_end=None, unmapped=False, min_mapq=None):
         """
-        Initilize ReadFile.
+        Initialize ReadFile.
         :param file_path: str/None - file path or None if reads come from stdin
         :param maximal_reads: int - read maximal of this number of reads
         :param stranded: 'yes'/'both'/'reverse' - whether to use stranded
         :param file_type: str - file type
         :param verbosity: int - how verbose are we
+        :param chromosome: str - chromosome
+        :param ref_start: int - reference start
+        :param ref_end: int - reference end
+        :param min_mapq: int - minimal mapping quality to pass selection process
+        :param unmapped: boolean - include unmapped reads?
         """
         self.file_path = file_path
         self.maximal_reads = maximal_reads
@@ -134,17 +139,22 @@ class ReadFile:
 
         self.distribution = collections.defaultdict(int)
 
-        self.reader = self.load_reader(verbosity)
+        self.reader = self.load_reader(verbosity, chromosome, ref_start, ref_end, unmapped, min_mapq)
 
-    def load_reader(self, verbosity):
+    def load_reader(self, verbosity, chromosome=None, ref_start=None, ref_end=None, unmapped=False, min_mapq=None):
         """
         Return reader according to file type and file path.
         :param verbosity: int - how verbose are we
+        :param chromosome: str - chromosome
+        :param ref_start: int - reference start
+        :param ref_end: int - reference end
+        :param unmapped: boolean - include unmapped reads?
+        :param min_mapq: int - minimal mapping quality to pass selection process
         :return: reader object
         """
         readers = {
             'sam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
-            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity),
+            'bam': lambda fn: ReadFile.iter_seqs_bam(fn, verbosity, chromosome, ref_start, ref_end, unmapped, min_mapq),
             'fasta': lambda fn: ReadFile.iter_seqs_fasta(fn, False),
             'fastq': lambda fn: ReadFile.iter_seqs_fastq(fn, False),
             'fasta.gz': lambda fn: ReadFile.iter_seqs_fasta(fn, True),
@@ -210,20 +220,37 @@ class ReadFile:
         return distrib_array[:up_to]
 
     @staticmethod
-    def iter_seqs_bam(file_name, verbosity=0):
+    def iter_seqs_bam(file_name, verbosity=0, chromosome=None, pos_start=None, pos_end=None, unmapped=False, min_mapq=None):
         """
         Reader for bam files.
         :param file_name: str - file path to open
         :param verbosity: int - how verbose are we 0-3
+        :param chromosome: str - chromosome
+        :param pos_start: int - reference start
+        :param pos_end: int - reference end
+        :param unmapped: boolean - include unmapped reads?
+        :param min_mapq: int - minimal mapping quality to pass selection process
         :return: iterator - reads a bam file iteratively
         """
+
         if file_name is not None:
             bam = pysam.AlignmentFile(file_name, "rb")
         else:
             bam = pysam.AlignmentFile(sys.stdin, "rb")
 
-        for read in bam:
-            # print("Read produced:", read.qname, str(read.seq), read.qual, read.mapping_quality, str(read.chromosome), read.ref_start, read.ref_end)
+        if chromosome is not None and pos_start is not None and pos_end is not None:
+            # read reads from specific region
+            try:
+                region = bam.fetch(chromosome, pos_start, pos_end)
+            except ValueError:
+                print(f"Detected BAM file {file_name} without index, please sort and index with 'samtools sort' and 'samtools index'.")
+                sys.exit()
+        else:
+            region = bam
+
+        for read in region:
+            if unmapped and not read.is_unmapped:
+                continue
             left_pair = None
             if read.is_paired:
                 left_pair = read.is_read1
@@ -232,6 +259,8 @@ class ReadFile:
                 ref_end = read.reference_end
                 ref_id = str(read.reference_name)
                 mapq = read.mapping_quality
+                if min_mapq is not None and mapq < min_mapq:
+                    continue
                 ref_id, left_pair_from_name = extract_pair(ref_id, None)
                 if left_pair_from_name is not None and left_pair is not None and left_pair_from_name != left_pair and verbosity > 0:
                     warn = "WARNING: read inconsistency (left pair-end should end with '1', right with '2'): %s" % (str(read))
@@ -255,9 +284,9 @@ class ReadFile:
         """
         left_pair = None
         if file_name is not None:
-            if '_R1.' in file_name:
+            if '_R1' in file_name:
                 left_pair = True
-            if '_R2.' in file_name:
+            if '_R2' in file_name:
                 left_pair = False
 
         # log the pair info
@@ -271,6 +300,8 @@ class ReadFile:
         sequence = ""
         left_pair_cur = None
         for i, line in enumerate(reads):
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
             if i % 4 == 0:
                 rid = line.strip()[1:]
                 rid, left_pair_cur = extract_pair(rid, left_pair)
@@ -304,6 +335,8 @@ class ReadFile:
         seq, rid = '', None
         left_pair_cur = None
         for line in reads:
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
             if line[0] == '>':
                 if seq:
                     yield Read(rid, seq, left_pair=left_pair_cur)
@@ -331,6 +364,8 @@ class ReadFile:
         left_pair = None
         complement = False
         for i, line in enumerate(reads):
+            if not isinstance(line, str):
+                line = line.decode("utf-8")
             if line[0] == '>':
                 rid = line[1:].strip()
                 rid, left_pair = extract_pair(rid)

@@ -6,40 +6,24 @@ Dante profiles sequenced DNA fragments against STR motifs defined in a user-frie
 - observed number of repetitions, probabilities of possible genotypes in a color plot
 - sequence logos corresponding to called alleles
 
-Reported figures provide an evidence for expanded allele, which is too long to be captured by a single NGS read as well as for allelic single point mutations, small insertions, and deletions that may be relevant for a diagnostic evaluation.
+Reported figures provide an evidence for an expanded allele, which is too long to be captured by a single NGS read as well as for allelic single point mutations, small insertions, and deletions that may be relevant for a diagnostic evaluation.
 
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine. 
 
-### Prerequisites
-
-Dante is developed and tested on Python 2.7 with libraries determined in the requirements.txt file: 
-
-```
-numpy==1.11.0
-multiprocess==0.70.5
-pysam==0.11.2.2
-regex==2017.9.23
-numba==0.35.0
-pandas==0.19.1
-scipy==0.18.1
-matplotlib==1.5.1
-PyYAML==3.12
-```
-
-All libraries may be easily installed using pip.
-
-```
-pip install <dependency>
-```
-
 ### Installation
 
-Dante requires only Python 2.7 interpreter with libraries listed in section Prerequisites. After cloning the repository, you may check out by: 
+Dante is developed and tested on Python 3.7 with libraries determined in the `conda_env.yaml`. Create the conda environment as following:
+```bash
+conda env create -n dante -f conda_env.yaml
 ```
-python dante.py --help
+
+Furthermore, if you need to use the config converter program `make_config.py`, you need to additionaly install `ensembl_rest` python package (not available directly through conda):
+
+```bash
+pip install ensembl_rest==0.3.3
 ```
 
 ### Example dataset
@@ -54,7 +38,7 @@ Dante will annotate and genotype 7 selected STR motifs using reads in files exam
 
 ## Config file
 
-Dante requires (and accepts) only one input: configuration file in YAML format. All of the configuration options are described directly in the default configuration file ("input_data/default.yaml") and in the example config file ("example/config.yaml").
+Dante requires (and accepts) only one input: configuration file in YAML format. All the configuration options are described directly in the default configuration file ("input_data/default.yaml") and in the example config file ("example/config.yaml").
 
 ## Methods
 
@@ -91,5 +75,5 @@ This call creates a file "Dante_outputs/params.txt" with new stutter parameters 
 
 Finally, in case you did not mess with generated config files, directories "Dante_outputs/sample1_retrained", "Dante_outputs/sample2_retrained", "Dante_outputs/sample3_retrained" contain Dante results with trained stutter parameters.
 
-Dante uses the same stutter parameters for all motifs (which we will probably change in later versions), so we recommend to use similarly behaving motifs together (motifs that have the same or similar length of repetition). The training is usually done under a minute and we recommend to use maximal possible number of samples to achieve best results. 
+Dante uses the same stutter parameters for all motifs (which we will probably change in later versions), so we recommend to use similarly behaving motifs together (motifs that have the same or similar length of repetition). The training is usually done under a minute, and we recommend to use maximal possible number of samples to achieve best results. 
 

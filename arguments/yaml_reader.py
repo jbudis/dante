@@ -1,5 +1,3 @@
-from __future__ import division, print_function
-
 import yaml
 
 
@@ -18,7 +16,7 @@ def load_arguments(yaml_file):
     try:
         with open(yaml_file, 'r') as stream:
             try:
-                read_yaml = yaml.load(stream)
+                read_yaml = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
     except IOError:

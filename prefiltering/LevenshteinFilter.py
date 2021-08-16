@@ -1,6 +1,6 @@
 import numpy as np
 from numba import jit
-from DummyFilter import DummyFilter
+from prefiltering.DummyFilter import DummyFilter
 
 
 @jit

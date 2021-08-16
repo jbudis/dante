@@ -1,5 +1,4 @@
-from itertools import izip
-from state import CODE_GAP
+from annotation.state import CODE_GAP
 
 
 class Annotation:
@@ -77,7 +76,7 @@ class Annotation:
         :return: tuple(str, str) Input sequence and quality filled with gaps in deletion areas
         """
         seq, qual = [], []
-        for nucleotide, phred, skip in izip(self.read.sequence, self.read.quality, self.skips):
+        for nucleotide, phred, skip in zip(self.read.sequence, self.read.quality, self.skips):
             seq.append(nucleotide)
             qual.append(phred)
             for i in range(len(skip)):
@@ -282,3 +281,16 @@ class Annotation:
         """
         comp_length = min(len(self.read.sequence), len(annotation.read.sequence))
         return self.read.sequence[-comp_length:] == annotation.read.sequence[-comp_length:]
+
+    def get_str_repetitions(self, index_str):
+        """
+        Get the number of str repetitions for a particular index.
+        :param index_str: int - index of a str
+        :return: (bool, int) - closed?, number of str repetitions
+        """
+        if self.is_annotated_right():
+            primer1 = index_str > 0 and self.module_repetitions[index_str - 1] > 0
+            primer2 = index_str + 1 < len(self.module_repetitions) and self.module_repetitions[index_str + 1] > 0
+            if primer1 or primer2:
+                return primer1 and primer2, self.module_repetitions[index_str]
+        return None

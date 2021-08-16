@@ -1,4 +1,5 @@
-from Annotation import Annotation
+from annotation.Annotation import Annotation
+from operator import attrgetter
 
 
 def annotations_to_pairs(annotations):
@@ -83,21 +84,84 @@ def remove_pcr_duplicates(annot_pairs):  # TODO make this faster/parallelize - t
     :param annot_pairs: list(AnnotationPair) - list of Annotation Pairs
     :return: list(AnnotationPair), list(AnnotationPair) - deduplicated list and duplications
     """
-    deduplicated = []
-    duplicates = []
-    for ap in annot_pairs:
-        written = False
-        for i, dedup in enumerate(deduplicated):
-            if dedup == ap:
-                if ap.more_info_than(dedup):
-                    duplicates.append(dedup)
-                    deduplicated[i] = ap
+    def remove_none(ann_pairs: list, first: bool = True) -> list:
+        """
+        Remove annotation pairs with None first (second) annotation from the pair.
+        :param ann_pairs: list(AnnotationPair) - list of Annotation Pairs
+        :param first: bool - look at the first annotation from the pair?
+        :return: list(AnnotationPair) - list of Annotation Pairs without None pairs
+        """
+        arr = []
+        for ap in ann_pairs:
+            if first and ap.ann1 is not None:
+                arr.append(ap)
+            if not first and ap.ann2 is not None:
+                arr.append(ap)
+        return arr
+
+    def restore_none(pairs_with_none: list, pairs_without_none: list, first: bool = True) -> list:
+        """
+        Restore annotation pairs with None first (second) annotation from the pair.
+        :param pairs_with_none: list(AnnotationPair) - list of Annotation Pairs with None annotations
+        :param pairs_without_none: list(AnnotationPair) - list of Annotation Pairs without None annotations
+        :param first: bool - look at the first annotation from the pair?
+        :return: list(AnnotationPair) - list of Annotation Pairs with restored Annotation Pairs with None annotation
+        """
+        ann_pairs = pairs_without_none.copy()
+
+        for ap in pairs_with_none:
+            if first and ap.ann1 is None:
+                ann_pairs.append(ap)
+            if not first and ap.ann2 is None:
+                ann_pairs.append(ap)
+        return ann_pairs
+
+    def deduplicate(ann_pairs: list):
+        """
+        Remove PCR duplicates -- deduplicate the annotation pair list.
+        :param ann_pairs: list(AnnotationPair) - list of Annotation Pairs sorted by annotation_1 or annotation_2
+        :return: list(AnnotationPair), list(AnnotationPair) - deduplicated list and duplications
+        """
+        dedup = []
+        duplic = []
+
+        if not ann_pairs:
+            return [], []
+
+        # Find duplicates by comparing neighbours in sorted list
+        prev_ap = ann_pairs[0]
+        for curr_ap in ann_pairs[1:]:
+            if prev_ap == curr_ap:
+                if prev_ap.more_info_than(curr_ap):
+                    duplic.append(curr_ap)
                 else:
-                    duplicates.append(ap)
-                written = True
-                break
-        if not written:
-            deduplicated.append(ap)
+                    duplic.append(prev_ap)
+                    prev_ap = curr_ap
+            else:
+                dedup.append(prev_ap)
+                prev_ap = curr_ap
+
+        dedup.append(prev_ap)
+
+        return dedup, duplic
+
+    if not annot_pairs:
+        return [], []
+
+    # Deduplication according to first annotation in pair
+    curr_pairs = remove_none(annot_pairs, True)
+    curr_pairs = sorted(curr_pairs, key=attrgetter('ann1.read.sequence'))
+    deduplicated_1, duplicates_1 = deduplicate(curr_pairs)
+
+    curr_pairs = restore_none(annot_pairs, deduplicated_1, True)
+
+    # Deduplication according to second annotation in pair
+    curr_pairs = remove_none(curr_pairs, False)
+    curr_pairs = sorted(curr_pairs, key=lambda ann: ann.ann2.read.sequence[::-1])
+    deduplicated_2, duplicates_2 = deduplicate(curr_pairs)
+
+    deduplicated = restore_none(deduplicated_1, deduplicated_2, False)
+    duplicates = duplicates_1 + duplicates_2
 
     return deduplicated, duplicates
 
@@ -193,16 +257,13 @@ class AnnotationPair:
 
         # then return those that have more annotated modules, or bases:
 
-        def eval_info_value(ann):
+        def eval_info_value(ann: Annotation):
             """
             Evaluate the info value of an Annotation.
             :param ann: Annotation - to evaluate
             :return: int, int
             """
-            annotated_modules = 0 if self.ann1 is None else sum(self.ann1.module_repetitions) + 0 if self.ann2 is None else sum(self.ann2.module_repetitions)
-            annotated_bases = 0 if self.ann1 is None else sum(self.ann1.module_bases) + 0 if self.ann2 is None else sum(self.ann2.module_bases)
-
-            return annotated_modules, annotated_bases
+            return 0 if ann is None else sum(ann.module_repetitions), 0 if ann is None else sum(ann.module_bases)
 
         m1f, b1f = eval_info_value(self.ann1)
         m2f, b2f = eval_info_value(self.ann2)

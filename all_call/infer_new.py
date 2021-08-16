@@ -1,11 +1,8 @@
-from __future__ import print_function
-
 import math
 import functools
 from scipy.stats import binom
 import numpy as np
 import itertools
-# from annotation import Annotation
 import sys
 
 import matplotlib.pyplot as plt
@@ -223,7 +220,7 @@ class Inference:
         with open(params_file) as f:
             lines = f.readlines()
             fit_function = lines[1].strip().split()[1]
-            split = map(float, lines[-1].strip().split())
+            split = list(map(float, lines[-1].strip().split()))
 
         if len(split) < 4:
             print("ERROR: parameters were not read successfully, using defaults!", file=sys.stderr)
@@ -366,13 +363,13 @@ class Inference:
         :return: dict(tuple(int, int):float) - directory of model indices to their likelihood
         """
         # generate closed observed and read_length arrays
-        observed_annots = map(lambda x: x.module_repetitions[index_rep], annotations)
-        rl_annots = map(lambda x: len(x.read.sequence), annotations)
+        observed_annots = list(map(lambda x: x.module_repetitions[index_rep], annotations))
+        rl_annots = list(map(lambda x: len(x.read.sequence), annotations))
         closed_annots = np.ones_like(observed_annots, dtype=bool)
 
         # generate open observed and read_length arrays
-        observed_fa = map(lambda x: x.module_repetitions[index_rep], filt_annotations)
-        rl_fa = map(lambda x: len(x.read.sequence), filt_annotations)
+        observed_fa = list(map(lambda x: x.module_repetitions[index_rep], filt_annotations))
+        rl_fa = list(map(lambda x: len(x.read.sequence), filt_annotations))
         closed_fa = np.zeros_like(observed_fa, dtype=bool)
 
         # join them and keep the information if they are open or closed
@@ -516,12 +513,11 @@ class Inference:
         if best[0] == 0 and best[1] == 0:
             best_sym = ('B', 'B')
         else:
-            best_sym = map(lambda x: 'E' if x == self.max_rep or x == 0 else x, best)
+            best_sym = list(map(lambda x: 'E' if x == self.max_rep or x == 0 else x, best))
 
         return lh_array, best, best_sym
 
-    @staticmethod
-    def get_confidence(lh_array, predicted):
+    def get_confidence(self, lh_array, predicted):
         """
         Get confidence of a prediction.
         :param lh_array: 2D-ndarray - log likelihoods of the prediction
@@ -536,7 +532,12 @@ class Inference:
         confidence1 = np.sum(np.exp(lh_corr_array[predicted[0], :])) / lh_sum
         confidence2 = np.sum(np.exp(lh_corr_array[:, predicted[1]])) / lh_sum
 
-        return confidence, confidence1, confidence2
+        confidence_back = np.exp(lh_corr_array[0, 0]) / lh_sum
+        confidence_back_all = np.sum(np.exp(lh_corr_array[0, :])) / lh_sum
+        confidence_exp = np.exp(lh_corr_array[0, self.max_rep]) / lh_sum
+        confidence_exp_all = np.sum(np.exp(lh_corr_array[:, self.max_rep])) / lh_sum
+
+        return confidence, confidence1, confidence2, confidence_back, confidence_back_all, confidence_exp, confidence_exp_all
 
     @staticmethod
     def write_output(file_desc, predicted, conf, name):
@@ -552,7 +553,11 @@ class Inference:
         def write_output_fd(f, predicted, conf, name):
             print("Predicted alleles for %s: (confidence = %5.1f%%)" % (str(name), conf[0] * 100.0), file=f)
             print("\t%3s (confidence = %5.1f%%)" % (str(predicted[0]), conf[1] * 100.0), file=f)
-            print("\t%3s (confidence = %5.1f%%)\n" % (str(predicted[1]), conf[2] * 100.0), file=f)
+            print("\t%3s (confidence = %5.1f%%)" % (str(predicted[1]), conf[2] * 100.0), file=f)
+            print("B   B  %7.3f%%" % (conf[3] * 100.0), file=f)
+            print("all B  %7.3f%%" % (conf[4] * 100.0), file=f)
+            print("B   E  %7.3f%%" % (conf[5] * 100.0), file=f)
+            print("all E  %7.3f%%" % (conf[6] * 100.0), file=f)
 
         if type(file_desc) is str:
             with open(file_desc, 'w') as f:
@@ -576,7 +581,6 @@ class Inference:
         if len(annotations) == 0 and len(filt_annotations) == 0:
             # write output
             # self.write_output(file_output, ('B', 'B'), (0.0, 0.0, 0.0), name)
-
             return None
 
         # infer likelihoods
