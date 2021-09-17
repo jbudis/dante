@@ -1,12 +1,14 @@
-import templates
+import os
+import shutil
+
 from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.colors import ListedColormap
 import numpy as np
-import os
 import pandas as pd
 
+import templates
 import report.html_templates
 
 # max repetitions on the graph
@@ -595,6 +597,9 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
     template = open('%s/report.html' % script_dir, 'r').read()
     with open('%s/report.html' % report_dir, 'w') as f:
         f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
+    # copy msa.min.gz.js
+    if not quiet:
+        shutil.copy2('%s/msa.min.gz.js' % script_dir, '%s/msa.min.gz.js' % report_dir)
 
     # save the table(s)
     result_table.to_csv('%s/table.tsv' % report_dir, sep='\t')
