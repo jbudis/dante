@@ -41,6 +41,7 @@ def load_arguments():
         required.add_argument('--motif-file', type=nonempty_file, help='YAML configuration file with motifs.')
 
         options = parser.add_argument_group('Options')
+        options.add_argument('--start-motif', type=int, help='Starting motif index (from 0). Default=0.', default=0)
         options.add_argument('--max-motifs', type=int, help='Maximal number of motifs to load. Default: All', default=None)
         options.add_argument('--cpu', type=int, help='Overwrite config number of CPUs. Default: as in config file', default=None)
         # options.add_argument('--skip-annotation', action='store_true', help='Skip annotation and do only inference. Debug purposes only.')
@@ -71,10 +72,10 @@ def load_arguments():
     if args.cpu is not None:
         config['general']['cpu'] = args.cpu
     # adjust number of motifs
+    config['motifs'] = config['motifs'][args.start_motif:]
     if args.max_motifs is not None:
         num_motifs = len(config['motifs'])
         config['motifs'] = config['motifs'][num_motifs-args.max_motifs:]
-        print(config['motifs'])
 
     try:
         if not os.path.exists(config['general']['output_dir']):

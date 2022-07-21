@@ -167,11 +167,12 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
 
     # crate pool and initialize it with init_pool
     res = [[] for _ in range(len(annotators))]
-    pool = None
     if threads > 1 or config['general'].get('force_parallel', False):
         # print('Running in parallel ({threads} cores)'.format(threads=threads))
         pool = multiprocess.Pool(threads, initializer=init_pool, initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every))
         results = pool.map(annotate_read, reader, chunksize=100)
+        # pool.close()  // this sometimes caused hang out (if the flanking region was long) - don't know the reason
+        # pool.join()
     else:
         # print('Running sequentially')
         results = (annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every) for read in reader)
@@ -182,10 +183,6 @@ def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, fi
         for i, pr in enumerate(partial_res):
             if pr is not None:
                 res[i].append(pr)
-
-    if pool is not None:
-        pool.close()
-        pool.join()
 
     if report_every > 0:
         print('')
