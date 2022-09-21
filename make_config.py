@@ -58,23 +58,24 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
                         help='The way of typing repetitive sequence with 1 repetition into YAML file. (default=1)',
                         default=1)
 
-    parser.add_argument('--pmf', type=int, help='Minimum length of flanking sequence to pass postfilter (default=5)',
+    parser.add_argument('--min-flank-post', '--pmf', type=int, help='Minimum length of flanking sequence to pass postfilter (default=5)',
                         default=5)
-    parser.add_argument('--pmfc', type=int,
+    parser.add_argument('--min-flank-post-complex', '--pmfc', type=int,
                         help='Minimum length of flanking sequence to pass postfilter for repetition pairs (default=3)',
                         default=3)
-    parser.add_argument('--pmr', type=int, help='Minimum number of repetitions to pass prefilter and postfilter (default=3)',
+    parser.add_argument('--min-rep-post', '--pmr', type=int, help='Minimum number of repetitions to pass prefilter and postfilter (default=3)',
                         default=3)
 
-    parser.add_argument('-m', type=int,
+    parser.add_argument('-m', '--min-mapq', type=int,
                         help='Minimum mapping quality to pass selection process')
 
-    parser.add_argument('-e', type=int,
+    parser.add_argument('-e', '--max-errors', type=int,
                         help='Maximum number of errors in repetitive sequence from table compared to reference sequence (default=1)', default=1)
 
-    parser.add_argument('-u', help='Include unmapped reads', action='store_true')
+    parser.add_argument('-u', '--include-unmapped', help='Include unmapped reads', action='store_true')
     parser.add_argument('-r', help='Remove current motifs in YAML configuration file', action='store_true')
     parser.add_argument('--quiet', help='Does not print errors and warning messages', action='store_true')
+    parser.add_argument('--postfilter', help='Options to add to postfilter, for example "max_errors: 0.2" for 20% of errors allowed.')
 
     args = parser.parse_args()
 
@@ -94,7 +95,7 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
         print('Unsupported format of table file. Supported formats are csv or tsv.')
         sys.exit()
 
-    return config_dict, table_df, args.flank, args.seq, args.u, args.config_file, args.m, args.pmf, args.pmfc, args.pmr, args.e, not args.quiet
+    return config_dict, table_df, args
 
 
 def get_ref_sequence(chromosome, start_pos, end_pos):
@@ -671,7 +672,8 @@ Start of real code
 """
 if __name__ == "__main__":
     # load arguments
-    config, table, flank_len, seq_type, include_unmapped, path, min_mapq, min_flank_post, min_flank_post_complex, min_rep_post, max_errors, verbose = load_arguments()
+    config, table, args = load_arguments()
+    verbose = not args.quiet
     motifs = []
 
     without_problem = 0
@@ -689,8 +691,13 @@ if __name__ == "__main__":
         disease = rows['disease']
         description = rows['description']
 
+        # skip empty nomenclature
+        if str(nomenclature) == 'nan':
+            print('Skipping row due to empty "nomenclature"', disease, description)
+            continue
+
         # parse nomenclature (get information from nomenclature)
-        ref_sequence, repetitions, chromosome, ref_start, ref_end = parse_nomenclature(nomenclature, flank_len)
+        ref_sequence, repetitions, chromosome, ref_start, ref_end = parse_nomenclature(nomenclature, args.flank)
 
         # skip motif if there is no sequence from reference genome or repetitive sequence from table
         if ref_sequence is None:
@@ -705,7 +712,7 @@ if __name__ == "__main__":
             continue
 
         # check if reference sequence and repetitive sequence are same (repair repetitive sequence if they are not same)
-        new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, flank_len, max_errors, verbose)
+        new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, args.flank, args.max_errors, verbose)
 
         new_errors = False
         under_half = False
@@ -731,21 +738,31 @@ if __name__ == "__main__":
         if not new_errors:
             without_problem += 1
 
-        if len(right_flank) < flank_len or len(left_flank) < flank_len:
+        if len(right_flank) < args.flank or len(left_flank) < args.flank:
             # flank sequences are shorter than they are supposed to be, update them
             # it is possible because repetitive sequence can be cut out from flank region
-            ref_start = ref_start - flank_len + len(left_flank)
-            ref_end = ref_end + flank_len - len(right_flank)
+            ref_start = ref_start - args.flank + len(left_flank)
+            ref_end = ref_end + args.flank - len(right_flank)
 
             seq_new = get_ref_sequence(chromosome, ref_start, ref_end)
 
             if seq_new is not None:
-                left_flank = seq_new[:flank_len]
-                right_flank = seq_new[-flank_len:]
+                left_flank = seq_new[:args.flank]
+                right_flank = seq_new[-args.flank:]
 
         # make motif
-        motif = make_motif(disease, description, new_repetitions, left_flank, right_flank, seq_type, chromosome, ref_start,
-                           ref_end, include_unmapped, min_mapq, min_flank_post, min_flank_post_complex, min_rep_post)
+        motif = make_motif(disease, description, new_repetitions, left_flank, right_flank, args.seq, chromosome, ref_start,
+                           ref_end, args.include_unmapped, args.min_mapq, args.min_flank_post, args.min_flank_post_complex, args.min_rep_post)
+
+        # append postfilter values
+        if args.postfilter != '' and ':' in args.postfilter:
+            key, value = args.postfilter.strip().split(':')
+            try:
+                value = float(value.strip())
+            except ValueError:
+                pass
+            for postfilter in motif['postfilter']:
+                postfilter[key.strip()] = value
 
         # check duplicate modules
         new_motif = True
@@ -763,7 +780,7 @@ if __name__ == "__main__":
         config['motifs'] = motifs
 
     # write config dictionary into .yaml file
-    with open(path, 'w') as file:
+    with open(args.config_file, 'w') as file:
         yaml.dump(config, file)
 
-    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, max_errors, er_in_table, flank_len, len(motifs), verbose)
+    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, args.max_errors, er_in_table, args.flank, len(motifs), verbose)
