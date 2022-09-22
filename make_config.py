@@ -631,7 +631,7 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, rep_type, chromos
 
 
 def print_report(n_motifs, without_corrections, removed_repetitions, decreased_repetitions, increased_repetitions,
-                 errors_in_bases, max_errors, errors_in_table, length_flank, in_config, verbose):
+                 errors_in_bases, max_errors, errors_in_table, errors_empty_nom, length_flank, in_config, verbose):
     """
     Print final report.
     :param n_motifs: int - number of all motifs
@@ -642,28 +642,30 @@ def print_report(n_motifs, without_corrections, removed_repetitions, decreased_r
     :param errors_in_bases: int - number of motifs where error in bases was found
     :param max_errors: int - maximum number of errors in repetitions
     :param errors_in_table: int - number of motifs with invalid parameters in table
+    :param errors_empty_nom: int - number of motifs with empty nomenclature field
     :param length_flank: int - length of flank sequence
     :param verbose: bool - be verbose
     :param in_config: int - number of motifs in config.file
     """
     print()
     print(f'From available {n_motifs} motifs:')
-    print(f'    {n_motifs - len(removed_repetitions) - errors_in_table} converted')
+    print(f'    {n_motifs - len(removed_repetitions) - errors_in_table - errors_empty_nom} converted')
     print(f'        {without_corrections} converted without problems')
-    print(f'        {n_motifs - without_corrections - len(removed_repetitions) - errors_in_table} converted after error correction')
+    print(f'        {n_motifs - without_corrections - len(removed_repetitions) - errors_in_table - errors_empty_nom} converted after error correction')
     print(f'        Corrections:')
     print(f'            {decreased_repetitions} decreased repetitions')
     print(f'            {increased_repetitions} increased repetitions')
     print(f'            {errors_in_bases} matched with maximum {max_errors} errors')
     print(f'        There could have been more than 1 correction in 1 motif')
-
-    print(f'    {len(removed_repetitions)} removed due to failed conversion')
+    print()
+    print(f'    {len(removed_repetitions) + errors_empty_nom + errors_in_table} removed due to failed conversion')
     if verbose:
         for ref_seq, reps in removed_repetitions:
             print(f'        Reference sequence: {ref_seq[length_flank:-length_flank]}')
             print(f'        Repetitions in table: {reps}\n')
-    print(f'    {errors_in_table} removed due to error in table (invalid reference genome or no repetitions)\n')
-
+    print(f'        {errors_in_table} removed due to error in table (invalid reference genome or no repetitions)')
+    print(f'        {errors_empty_nom} removed due to empty "nomenclature" column')
+    print()
     print(f'{in_config} motifs written into config file -> {n_motifs - len(removed_repetitions) - errors_in_table - in_config} converted motifs were removed in deduplication process')
 
 
@@ -681,6 +683,7 @@ if __name__ == "__main__":
     rep_inc = 0
     er_in_bases = 0
     er_in_table = 0
+    er_empty_nom = 0
     rep_rem = []
 
     # iter over dataframe in motif table
@@ -690,10 +693,14 @@ if __name__ == "__main__":
         nomenclature = rows['nomenclature']
         disease = rows['disease']
         description = rows['description']
+        gene = rows['gene' if 'gene' in rows else 'Gene']
+        description = f'{description} (gene:{gene})'
 
         # skip empty nomenclature
         if str(nomenclature) == 'nan':
-            print('Skipping row due to empty "nomenclature"', disease, description)
+            er_empty_nom += 1
+            if verbose:
+                print(f'Error: Skipping row ({disease} {description}) due to empty "nomenclature" ({nomenclature})')
             continue
 
         # parse nomenclature (get information from nomenclature)
@@ -783,4 +790,4 @@ if __name__ == "__main__":
     with open(args.config_file, 'w') as file:
         yaml.dump(config, file)
 
-    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, args.max_errors, er_in_table, args.flank, len(motifs), verbose)
+    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, args.max_errors, er_in_table, er_empty_nom, args.flank, len(motifs), verbose)
