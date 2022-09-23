@@ -5,6 +5,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.colors import ListedColormap
+import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 
@@ -326,6 +327,50 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     _, max_y = plt.ylim()
     plt.xlim((0, xm + 1))
 
+    # ----- PLOTLY HISTOGRAM -----
+    dist_text, dist_filt_text = [], []
+
+    for i in range(len(dist_filt)):
+        if dist_filt[i] == 0 and dist[i] == 0:
+            dist_filt_text.append("")
+            dist_text.append("")
+
+        elif dist_filt[i] != 0 and dist[i] == 0:
+            dist_filt_text.append(str(dist_filt[i]))
+            dist_text.append("")
+
+        elif dist_filt[i] == 0 and dist[i] != 0:
+            dist_filt_text.append("")
+            dist_text.append(str(dist[i]))
+
+        elif dist_filt[i] != 0 and dist[i] != 0:
+            if dist_filt[i] > dist[i]:
+                dist_filt_text.append(str(dist_filt[i] - dist[i]))
+            elif dist_filt[i] == dist[i]:
+                dist_filt_text.append("")
+            else:
+                dist_filt_text.append(str(dist_filt[i]))
+            dist_text.append(str(dist[i]))
+
+    fig = go.Figure()
+
+    fig.add_bar(y=dist_filt, text=dist_filt_text, marker_color='rgb(204, 204, 204, 0.4)', name='Filtered repetitions')
+    fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Repetitions')
+
+    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
+    fig.update_layout(width=1000, height=500,
+                      hovermode='x',
+                      yaxis_fixedrange=True,
+                      template='simple_white',
+                      barmode='overlay')
+    fig.update_yaxes(title_text="Read counts")
+    fig.update_xaxes(title_text="STR repetitions")
+
+    with open(out_prefix + '.json', 'w') as f:
+        f.write(fig.to_json())
+
+    fig.write_image(out_prefix + '_plotly.pdf')
+
     # label numbers
     for rect, rect_filt in zip(rects, rects_filt):
         height = rect.get_height()
@@ -540,9 +585,9 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
     all_profiles = '%s/all_profiles.txt' % output_dir
     all_true = '%s/all_profiles.true' % output_dir
 
-    mcs = []
-    ms = []
-    rows = []
+    mcs = {}
+    ms = {}
+    rows = {}
 
     with open(all_profiles, 'w') as pf, open(all_true, 'w') as tf:
         for m in motifs:
@@ -551,7 +596,9 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
             description = m['description']
             for i, postfilter in enumerate(m['postfilter']):
                 # read files
-                rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
+                rep_file = '%s/%s/repetitions_%d.json' % (output_dir, motif_name, i + 1)
+                if postfilter['index_rep2'] != 'no':
+                    rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
                 if not os.path.exists(rep_file):
                     rep_file = None
                 pcol_file = '%s/%s/pcolor_%d.png' % (output_dir, motif_name, i + 1)
@@ -571,15 +618,21 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
                 if postfilter['index_rep2'] != 'no':
                     highlight.append(postfilter['index_rep2'] - 1)
                 row = report.html_templates.generate_row(motif_name, seq, confidence, postfilter, reads_blue, reads_grey, highlight=highlight)
-                rows.append(row)
+                if motif_name in rows:
+                    rows[motif_name].append(row)
+                else:
+                    rows[motif_name] = [row]
 
                 # add to csv table:
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
                 if not quiet:
                     mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
-                    mcs.append(mc)
-                    ms.append(m)
+                    if motif_name in mcs:
+                        ms[motif_name].append(m)
+                    else:
+                        mcs[motif_name] = mc
+                        ms[motif_name] = [m]
 
                     # add to profiles
                     if postfilter['index_rep2'] == 'no':
@@ -595,8 +648,18 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
     # save the report file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     template = open('%s/report.html' % script_dir, 'r').read()
+    tabs = []
+
     with open('%s/report.html' % report_dir, 'w') as f:
-        f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
+        # f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
+        template = custom_format(template, motifs_content='\n'.join(mcs.values()))
+
+        for motif in motifs:
+            m = motif['full_name']
+            tabs.append(report.html_templates.motif_summary.format(motif_name=m, motif_tg=m, motif_tgf=m, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
+
+        f.write(custom_format(template, motifs='\n'.join(tabs)))
+
     # copy msa.min.gz.js
     if not quiet:
         shutil.copy2('%s/msa.min.gz.js' % script_dir, '%s/msa.min.gz.js' % report_dir)

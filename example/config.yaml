@@ -43,7 +43,7 @@ motifs:                                                                       # 
       - repetitions: 1,3,1                                                    # Minimum number of annotated module repetitions separated by commas, e.g. 1,3,1 means that we require 1 repetition of first module, 3 of second, and 1 of third. Supply 'no' for no filtering.
         bases: 5,10,5                                                         # Minimum number of annotated nucleotides in each module separated by commas, e.g. 5,10,5 means that we require 5 annotated nucleotides in first module, 10 in second, and 5 in third. Supply 'no' for no filtering.
         max_errors: 0.05                                                      # Maximal number of errors (SNP/insertions/deletion) in annotation. Supply 'no' for no filtering.
-        max_errors_relative: True                                             # If this is True, "max_errors" is relative to the length of the read, i.e. 0.05 means, that maximum 5% of read can be errors.
+        max_errors_relative: True
 
   - full_name: SCA1
     description: Spinocerebellar ataxia 1 (OMIM No. 164400)
@@ -88,14 +88,42 @@ motifs:                                                                       # 
     description: Spinocerebellar ataxia 17 (OMIM No. 607136)
     modules:
       - seq: CACTGGACTGACCCCACAGCCTATTCAGAACACCAATAGTCTGTCTATTTTGGAAGAGCAACAAAGG
-      - seq: 5-CAG
+      - seq: 3-CAG
+      - seq: 3-CAA
+      - seq: 8-CAG
+      - seq: CAACAGCAA
+      - seq: 19-CAG
       - seq: GCAGTGGCAGCTGCAGCCGTTCAGCAGTCAACGTCCCAGCAGGCAACACAGGGAACCTCAGGCCAGGCACCACAG
     prefilter:
       type: SimpleFilter
       seq: 4-CAG
     postfilter:
-      - repetitions: 1,3,1
-        bases: 5,10,5
+      - bases: 5,9,5,0,0,0,0
+        repetitions: 1,3,2,0,0,0,0
+        index_rep: 2
+        max_errors: 0.2
+        max_errors_relative: True
+      - bases: 0,5,9,5,0,0,0
+        repetitions: 0,2,3,2,0,0,0
+        index_rep: 3
+        max_errors: 0.2
+        max_errors_relative: True
+      - bases: 0,0,5,9,5,0,0
+        repetitions: 0,0,2,3,1,0,0
+        index_rep: 4
+        max_errors: 0.2
+        max_errors_relative: True
+      - bases: 0,0,0,0,5,9,5
+        repetitions: 0,0,0,0,1,3,1
+        index_rep: 6
+        max_errors: 0.2
+        max_errors_relative: True
+      - bases: 0,0,3,9,9,9,3
+        repetitions: 0,0,1,3,1,3,1
+        index_rep: 4
+        index_rep2: 6
+        max_errors: 0.2
+        max_errors_relative: True
 
   - full_name: DRPLA
     description: Dentatorubro-pallidoluysian atrophy (OMIM No. 125370)

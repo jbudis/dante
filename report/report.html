@@ -5,7 +5,14 @@
     <title>Dante report</title>
     <script src="msa.min.gz.js"></script>
     <script src="https://gen-clc.cusp.uniba.sk/dante/msa.min.gz.js"></script>
+    <script src="plotly-2.14.0.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.css">
+
     <style>
         body {
             padding: 20px;
@@ -14,7 +21,7 @@
             line-height: 1.5
         }
 
-        .tg {
+        /*.tg {
             border-collapse: collapse;
             border-spacing: 0;
         }
@@ -38,6 +45,41 @@
 
         .tg .tg-s6z2 {
             text-align: center
+        }*/
+
+        .tab {
+          overflow: hidden;
+          border: 1px solid #ccc;
+          background-color: #f1f1f1;
+        }
+
+        /* Style the buttons that are used to open the tab content */
+        .tab button {
+          background-color: inherit;
+          float: left;
+          border: none;
+          outline: none;
+          cursor: pointer;
+          padding: 14px 16px;
+          transition: 0.3s;
+        }
+
+        /* Change background color of buttons on hover */
+        .tab button:hover {
+          background-color: #ddd;
+        }
+
+        /* Create an active/current tablink class */
+        .tab button.active {
+          background-color: #ccc;
+        }
+
+        /* Style the tab content */
+        .tabcontent {
+          display: none;
+          padding: 6px 12px;
+          border: 1px solid #ccc;
+          border-top: none;
         }
 
         .pic60 {
@@ -53,40 +95,39 @@
 </head>
 <body class="valo v-app">
 
+<!-- Tab links -->
 <h2 id="content">Content</h2>
-<ul>
-    <li><a href="#summary">Summary table</a></li>
-</ul>
-<ul>
+<div class="tab">
     {motifs_content}
-</ul>
+</div>
 
-<h2 id="summary">Summary table</h2>
-<table class="tg">
-    <tr>
-        <th class="tg-s6z2" rowspan="2">Motif</th>
-        <th class="tg-s6z2" rowspan="2">STR<br>sequence</th>
-        <th class="tg-s6z2" colspan="2">Allele 1</th>
-        <th class="tg-s6z2" colspan="2">Allele 2</th>
-        <th class="tg-s6z2" rowspan="2">Overall<br>confidence</th>
-        <th class="tg-s6z2" colspan="2">Reads</th>
-        <th class="tg-s6z2" colspan="3">Postfilter</th>
-        <th class="tg-s6z2" rowspan="2">Sequence</th>
-    </tr>
-    <tr>
-        <td class="tg-s6z2">prediction</td>
-        <td class="tg-s6z2">confidence</td>
-        <td class="tg-s6z2">prediction</td>
-        <td class="tg-s6z2">confidence</td>
-        <td class="tg-s6z2">full</td>
-        <td class="tg-s6z2">partial</td>
-        <td class="tg-s6z2">bases</td>
-        <td class="tg-s6z2">modules</td>
-        <td class="tg-s6z2">max. errors</td>
-    </tr>
-    {table}
-</table>
-<p><a href="#content">Back to content</a></p>
+<!-- Tab content -->
 {motifs}
+
+<script>
+    function openTab(evt, tabName) {
+        // Declare all variables
+        var i, tabcontent, tablinks;
+
+        // Get all elements with class="tabcontent" and hide them
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+</script>
+<script>
+    var mybtn = document.getElementsByClassName("tablinks")[0]; mybtn.click();
+</script>
 </body>
 </html>
