@@ -652,9 +652,9 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
 
     with open('%s/report.html' % report_dir, 'w') as f:
         # f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
-        template = custom_format(template, motifs_content='\n'.join(mcs.values()))
+        template = custom_format(template, motifs_content='\n'.join(sorted(mcs.values())))
 
-        for motif in motifs:
+        for motif in sorted(motifs, key=lambda x: x['full_name']):
             m = motif['full_name']
             tabs.append(report.html_templates.motif_summary.format(motif_name=m, motif_tg=m, motif_tgf=m, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
 
