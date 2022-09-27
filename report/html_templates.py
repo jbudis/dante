@@ -94,16 +94,17 @@ motif_stringb64 = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<div class="pic60" id="plotly_{motif_id}"></div>
+<div class="pic60" id="plotly_{motif_name}"></div>
 <script>
-    Plotly.newPlot('plotly_{motif_id}', {motif_reps}, {{}});
+    Plotly.newPlot('plotly_{motif_name}', {motif_reps}, {{}});
 </script>
 <img class="pic30" alt="{motif_name} pcolor" src="data:image/png;base64,{motif_pcolor}" />
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
 
-motif_stringb64_reponly = """<h2 id="{motif_name}">{motif}</h2>
+motif_stringb64_reponly = """
+<h2 id="{motif_name}">{motif}</h2>
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
@@ -202,15 +203,18 @@ def generate_row(motif, sequence, confidence, postfilter, reads_blue, reads_grey
 
     # fill templates:
     if confidence is None:
-        return row_string_empty_old.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'], motif_name=motif, motif_seq=smaller_seq, reads_blue=reads_blue, reads_grey=reads_grey,
-                                           str_seq=subpart, post_errors=errors)
+        return row_string_empty_old.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                           motif_name=motif, motif_seq=smaller_seq, reads_blue=reads_blue,
+                                           reads_grey=reads_grey, str_seq=subpart, post_errors=errors)
     else:
         (c, a1, a2, c1, c2, _, _, _, _) = confidence
         if a1 == 0 and a2 == 0:
             a1 = 'BG'
             a2 = 'BG'
-        return row_string.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'], motif_name=motif, motif_seq=smaller_seq, reads_blue=reads_blue, reads_grey=reads_grey,
-                                 motif_conf=c, allele1=a1, allele2=a2, allele1_conf=c1, allele2_conf=c2, str_seq=subpart, post_errors=errors)
+        return row_string.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'], motif_name=motif,
+                                 motif_seq=smaller_seq, reads_blue=reads_blue, reads_grey=reads_grey, motif_conf=c,
+                                 allele1=a1, allele2=a2, allele1_conf=c1, allele2_conf=c2, str_seq=subpart,
+                                 post_errors=errors)
 
 
 def generate_motifb64(motif_name, description, sequence, repetition, pcolor, alignment, confidence, postfilter, highlight=None):
@@ -259,22 +263,26 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
         else:
             reps = open(repetition, 'r').read()
         align_html = generate_alignment(motif_name, alignment)
+
         if pcolor is not None:
             pcol = base64.b64encode(open(pcolor, "rb").read())
             pcol = pcol.decode("utf-8")
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif, sequence=sequence), motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                                                                                        motif_name=motif_name, motif=motif, motif_reps=reps, motif_id=motif_name,
-                                                                                                                        result=result, motif_pcolor=pcol, alignment=align_html + align_html_a1 + align_html_a2,
-                                                                                                                        sequence=sequence, errors=errors)
+            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif, sequence=sequence), \
+                   motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                          motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
+                                          motif_pcolor=pcol, alignment=align_html + align_html_a1 + align_html_a2,
+                                          sequence=sequence, errors=errors)
         else:
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif, sequence=sequence), motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                                                                                                motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
-                                                                                                                                alignment=align_html + align_html_a1 + align_html_a2, sequence=sequence,
-                                                                                                                                errors=errors)
+            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif, sequence=sequence), \
+                   motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                                  motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
+                                                  alignment=align_html + align_html_a1 + align_html_a2,
+                                                  sequence=sequence, errors=errors)
 
     else:
-        return content_string_empty.format(motif_name=motif_name, motif=motif, sequence=sequence), motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                                                                                             motif_name=motif_name, motif=motif, sequence=sequence, errors=errors)
+        return content_string_empty.format(motif_name=motif_name, motif=motif, sequence=sequence), \
+               motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                         motif_name=motif_name, motif=motif, sequence=sequence, errors=errors)
 
 
 def generate_alignment(motif, alignment_file, display_text="Click to toggle alignment visualization"):

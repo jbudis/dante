@@ -660,9 +660,12 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
 
         f.write(custom_format(template, motifs='\n'.join(tabs)))
 
-    # copy msa.min.gz.js
+    # copy javascript libraries
     if not quiet:
         shutil.copy2('%s/msa.min.gz.js' % script_dir, '%s/msa.min.gz.js' % report_dir)
+        shutil.copy2('%s/plotly-2.14.0.min.js' % script_dir, '%s/plotly-2.14.0.min.js' % report_dir)
+        shutil.copy2('%s/jquery-3.6.1.min.js' % script_dir, '%s/jquery-3.6.1.min.js' % report_dir)
+        shutil.copy2('%s/datatables.min.js' % script_dir, '%s/datatables.min.js' % report_dir)
 
     # save the table(s)
     result_table.to_csv('%s/table.tsv' % report_dir, sep='\t')
