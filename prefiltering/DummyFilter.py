@@ -8,7 +8,7 @@ class DummyFilter(object):
 
     def filter_read(self, read):
         """
-        Test whether the read has passsed the filter.
+        Test whether the read has passed the filter.
         :param read: (3tuple) - the specified read.
         :return: bool - True if read has passed the filter
         """

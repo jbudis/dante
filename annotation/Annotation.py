@@ -1,4 +1,5 @@
 from annotation.state import CODE_GAP
+from prefiltering.SimpleFilter import base_mapping
 
 
 class Annotation:
@@ -65,6 +66,8 @@ class Annotation:
                 err_line.append('D')
             elif mot == '-':
                 err_line.append('I')
+            elif seq in base_mapping[mot]:
+                err_line.append('-')
             else:
                 err_line.append('M')
                 mismatches += 1
