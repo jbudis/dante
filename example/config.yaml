@@ -43,7 +43,7 @@ motifs:                                                                       # 
       - repetitions: 1,3,1                                                    # Minimum number of annotated module repetitions separated by commas, e.g. 1,3,1 means that we require 1 repetition of first module, 3 of second, and 1 of third. Supply 'no' for no filtering.
         bases: 5,10,5                                                         # Minimum number of annotated nucleotides in each module separated by commas, e.g. 5,10,5 means that we require 5 annotated nucleotides in first module, 10 in second, and 5 in third. Supply 'no' for no filtering.
         max_errors: 0.05                                                      # Maximal number of errors (SNP/insertions/deletion) in annotation. Supply 'no' for no filtering.
-        max_errors_relative: True
+        max_errors_relative: True                                             # If this is True, "max_errors" is relative to the length of the read, i.e. 0.05 means, that maximum 5% of read can be errors.
 
   - full_name: SCA1
     description: Spinocerebellar ataxia 1 (OMIM No. 164400)

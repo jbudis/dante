@@ -328,36 +328,28 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     plt.xlim((0, xm + 1))
 
     # ----- PLOTLY HISTOGRAM -----
-    dist_text, dist_filt_text = [], []
-
-    for i in range(len(dist_filt)):
-        if dist_filt[i] == 0 and dist[i] == 0:
-            dist_filt_text.append("")
-            dist_text.append("")
-
-        elif dist_filt[i] != 0 and dist[i] == 0:
-            dist_filt_text.append(str(dist_filt[i]))
-            dist_text.append("")
-
-        elif dist_filt[i] == 0 and dist[i] != 0:
-            dist_filt_text.append("")
-            dist_text.append(str(dist[i]))
-
-        elif dist_filt[i] != 0 and dist[i] != 0:
-            if dist_filt[i] > dist[i]:
-                dist_filt_text.append(str(dist_filt[i] - dist[i]))
-            elif dist_filt[i] == dist[i]:
-                dist_filt_text.append("")
+    def get_filt_text(_dist_filt, _dist):
+        if _dist_filt == 0:
+            return ""
+        elif _dist_filt != 0 and _dist == 0:
+            return str(_dist_filt)
+        elif _dist_filt != 0 and _dist != 0:
+            if _dist_filt > _dist:
+                return str(_dist_filt - _dist)
             else:
-                dist_filt_text.append(str(dist_filt[i]))
-            dist_text.append(str(dist[i]))
+                return ""
+        else:
+            return str(_dist_filt)
+
+    dist_text = ["" if d == 0 else str(d) for d in dist]
+    dist_filt_text = [get_filt_text(df, d) for df, d in zip(dist_filt, dist)]
 
     fig = go.Figure()
 
     fig.add_bar(y=dist_filt, text=dist_filt_text, marker_color='rgb(204, 204, 204, 0.4)', name='Filtered repetitions')
     fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Repetitions')
 
-    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
+    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=5)
     fig.update_layout(width=1000, height=500,
                       hovermode='x',
                       yaxis_fixedrange=True,
