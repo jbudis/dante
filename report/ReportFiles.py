@@ -361,7 +361,7 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     with open(out_prefix + '.json', 'w') as f:
         f.write(fig.to_json())
 
-    fig.write_image(out_prefix + '_plotly.pdf')
+    # fig.write_image(out_prefix + '_plotly.pdf')
 
     # label numbers
     for rect, rect_filt in zip(rects, rects_filt):
