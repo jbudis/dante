@@ -3,6 +3,35 @@ import numpy as np
 import json
 import os
 
+contents = """
+<table class="tg" id="content-tg">
+    <thead>
+        <tr>
+            <th class="tg-S6z2">Motif</th>
+        </tr>
+    </thead>
+    <tbody>
+        {table}
+    </tbody>
+</table>
+
+<script>
+    $(document).ready( function () {{
+    $('#content-tg').DataTable();
+}} );
+</script>
+"""
+
+content_string = """ <tr>
+<td class="tg-s6z2">
+<button class="tablinks" onclick="openTab(event, '{motif_name}')">
+<a href="#{motif_name}">{motif}</a>
+</button>
+</td>
+</tr>"""
+
+content_string_empty = ""
+
 row_string = """  <tr>
     <td class="tg-s6z2">{motif_name}</td>
     <td class="tg-s6z2">{str_seq}</td>
@@ -150,13 +179,6 @@ align_vis = """
   </details>
 """
 
-content_string = """
-<button class="tablinks" onclick="openTab(event, '{motif_name}')">
-<a href="#{motif_name}">{motif}</a>
-</button>"""
-
-content_string_empty = ""
-
 
 def highlight_subpart(seq, highlight):
     """
@@ -269,20 +291,20 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
         if pcolor is not None:
             pcol = base64.b64encode(open(pcolor, "rb").read())
             pcol = pcol.decode("utf-8")
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif, sequence=sequence), \
+            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
                    motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                           motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
                                           motif_pcolor=pcol, alignment=align_html + align_html_a1 + align_html_a2,
                                           sequence=sequence, errors=errors)
         else:
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif, sequence=sequence), \
+            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
                    motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                                   motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
                                                   alignment=align_html + align_html_a1 + align_html_a2,
                                                   sequence=sequence, errors=errors)
 
     else:
-        return content_string_empty.format(motif_name=motif_name, motif=motif, sequence=sequence), \
+        return content_string_empty.format(motif_name=motif_name, motif=motif), \
                motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors)
 
