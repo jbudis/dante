@@ -94,11 +94,13 @@ motif_stringb64 = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
+<div class="row">
 <div class="pic60" id="plotly_{motif_name}"></div>
 <script>
     Plotly.newPlot('plotly_{motif_name}', {motif_reps}, {{}});
 </script>
 <img class="pic30" alt="{motif_name} pcolor" src="data:image/png;base64,{motif_pcolor}" />
+</div>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
