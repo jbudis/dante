@@ -1,6 +1,10 @@
 import os
 import argparse
 import textwrap
+
+import numpy as np
+import plotly.graph_objects as go
+from plotly.io import to_json
 from bs4 import BeautifulSoup
 
 motif_summary = """
@@ -43,15 +47,23 @@ row_string = """  <tr>
     <td class="tg-s6z2">{motif_conf}%</td>
     <td class="tg-s6z2">{reads_blue}</td>
     <td class="tg-s6z2">{reads_grey}</td>
-  </tr>"""
+  </tr>
+"""
+
+heatmap_string = """
+<div id="motif-heatmap"></div>
+<script>
+    Plotly.newPlot('motif-heatmap', {heatmap}, {{}});
+</script>
+"""
 
 
 def load_arguments():
     """
     Loads and parses arguments.
-    :return: config_dict - config file in dictionary format.
-             table_df - motif table in dataframe format.
-             args - parsed arguments.
+    :return: input_dir - path to directory with Dante reports
+             output_dir - path to output dir
+             args - parsed arguments
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description=textwrap.dedent("""Python program to collect Dante report files and 
@@ -60,7 +72,8 @@ def load_arguments():
 
     # add arguments
     parser.add_argument('input_dir', help='Path to directory with Dante reports')
-    parser.add_argument('output_dir', help='Path to directory where the output will be stored')
+    parser.add_argument('output_dir', help='Path to directory where the output will be stored', nargs='?',
+                        default='example/motif_report')
 
     args = parser.parse_args()
 
@@ -85,10 +98,32 @@ def custom_format(template, **kwargs):
 
 def generate_row(motif_name, a1, c1, a2, c2, c, reads_blue, reads_grey):
     return row_string.format(name=motif_name, allele1=a1, allele1_conf=c1, allele2=a2, allele2_conf=c2,
-                             motif_conf=c,reads_blue=reads_blue, reads_grey=reads_grey)
+                             motif_conf=c, reads_blue=reads_blue, reads_grey=reads_grey)
 
 
-def generate_motif_report(path, key, samples):
+# Convert extracted numbers from table to ints and set background and expanded alleles to 0
+def parse_alleles(num):
+    if num == 'B' or num == 'E':
+        return 0
+    else:
+        return int(num)
+
+
+def parse_label(num):
+    if num == 0:
+        return ''
+    else:
+        return str(int(num))
+
+
+def generate_motif_report(path, key, samples, fig):
+    """
+    Generate report file for one motif
+    :param path: str - path to output dir
+    :param key: str - motif name
+    :param samples: list - list of samples of selected motif
+    :param fig: str - heatmap object
+    """
     template = open('report/motif_report.html', 'r').read()
     rows = []
     key = key.replace('/', '-')
@@ -98,14 +133,15 @@ def generate_motif_report(path, key, samples):
 
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
-        f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1], motifs_content=table))
+        heatmap = heatmap_string.format(heatmap=to_json(fig))
+        f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1], motifs_content=table, motif_heatmap=heatmap))
 
 
 def create_reports(input_dir, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     paths = []
 
-    # find all all_profiles.txt files in root directory
+    # find all report files in root directory
     for root, dirs, files in os.walk(input_dir):
         for file in files:
             if file.endswith('.html'):
@@ -117,9 +153,11 @@ def create_reports(input_dir, output_dir):
         file = BeautifulSoup(open(path, 'r'), 'html.parser')
         fname = path.split('/')[-1].split('.')[0]
 
+        # find table of class 'tg' and extract all rows from it
         for row in file.find(class_='tg').find_all('tr'):
             columns = row.find_all('td')
 
+            # remove head rows
             if columns == [] or columns[0].text.strip() == 'prediction':
                 continue
 
@@ -134,8 +172,28 @@ def create_reports(input_dir, output_dir):
                 else:
                     motifs[name].append(doc)
 
+    # create heatmap of alleles
     for _key in motifs.keys():
-        generate_motif_report(output_dir, _key, motifs[_key])
+        a1 = [parse_alleles(row[1]) for row in motifs[_key]]
+        a2 = [parse_alleles(row[3]) for row in motifs[_key]]
+
+        arr = np.zeros((max(a1) + 1, max(a2) + 1))
+
+        for i in range(len(a1)):
+            arr[a1[i], a2[i]] += 1
+
+        text = [[parse_label(arr[i, j]) for j in range(arr.shape[1])] for i in range(arr.shape[0])]
+
+        arr = arr / np.max(arr)
+
+        fig = go.Figure(go.Heatmap(z=list(arr), text=text, texttemplate="%{text}", textfont={"size": 10},
+                                   colorscale='Hot_r'))
+        fig.update_layout(width=750, height=750, template='simple_white')
+        fig.update_yaxes(title_text="Allele 1")
+        fig.update_xaxes(title_text="Allele 2")
+
+        # generate motif
+        generate_motif_report(output_dir, _key, motifs[_key], fig)
 
 
 if __name__ == '__main__':

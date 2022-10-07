@@ -5,6 +5,9 @@
     <title>Dante motif report</title>
     <link rel="stylesheet" type="text/css" href="https://www.w3schools.com/w3css/4/w3.css">
 
+    <script type="text/javascript" src="plotly-2.14.0.min.js"></script>
+    <script type="text/javascript" src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
+
     <script type="text/javascript" src="jquery-3.6.1.min.js"></script>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
 
@@ -50,10 +53,13 @@
 <body class="valo v-app">
 
 <!-- Tab links -->
-<h2 id="content">{motif}</h2>
+<h1 id="name">{motif}</h1>
 <a>Repetition sequence: <b>{seq}</b></a>
 <div class="motif-tg">
     {motifs_content}
 </div>
+<h2 id="map">Allele heatmap</h2>
+{motif_heatmap}
+<p><a href="#name">Back to top</a></p>
 </body>
 </html>
