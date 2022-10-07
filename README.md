@@ -1,5 +1,5 @@
 # Dante
- Dante ("Da Amazing NucleoTide Exposer") is an alignment-free algorithm for genotyping STR alleles based on NGS reads originating from the STR locus of interest. The method accounts for natural deviations from the expected sequence, such as variation in the repeat count, sequencing errors, ambiguous bases, and complex loci containing several different motifs.
+ Dante ("Da Amazing NucleoTide Exposer") is an alignment-free algorithm for genotyping STR alleles based on NGS reads originating from the STR locus of interest. The method accounts for natural deviations from the expected sequence, such as variation in the repeat count, sequencing errors, ambiguous bases, and complex loci containing several motifs.
 
 Dante profiles sequenced DNA fragments against STR motifs defined in a user-friendly configuration file. For each of the target motifs, [the final report](http://158.195.68.48/dante/example/report.html) contains the following: 
 - pair of the most probable genotypes with confidence scores
@@ -20,11 +20,13 @@ Dante is developed and tested on Python 3.7 with libraries determined in the `co
 conda env create -n dante -f conda_env.yaml
 ```
 
-Furthermore, if you need to use the config converter program `make_config.py`, you need to additionaly install `ensembl_rest` python package (not available directly through conda):
+Furthermore, if you need to use the config converter program `make_config.py`, you need to additionally install `ensembl_rest` python package (not available directly through conda):
 
 ```bash
 pip install ensembl_rest==0.3.3
 ```
+
+(To do this on some very old systems, you need to install openssl to your conda environment with `conda install -c conda-forge openssl==3.0.5`.)
 
 ### Example dataset
 
