@@ -112,8 +112,16 @@ motif_string = """<h2 id="{motif_name}">{motif}</h2>
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<img class="pic60" alt="{motif_name} repetitions" src="{motif_reps}" />
-<img class="pic30" alt="{motif_name} pcolor" src="{motif_pcolor}" />
+<table>
+    <tr>
+        <td colspan="2">
+            <img class="pic100" alt="{motif_name} repetitions" src="{motif_reps}" />
+        </td>
+        <td colspan="1">
+            <img class="pic100" alt="{motif_name} pcolor" src="{motif_pcolor}" />
+        </td>
+    </tr>
+</table>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
@@ -123,13 +131,19 @@ motif_stringb64 = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<div class="row">
-<div class="pic60" id="plotly_{motif_name}"></div>
-<script>
-    Plotly.newPlot('plotly_{motif_name}', {motif_reps}, {{}});
-</script>
-<img class="pic30" alt="{motif_name} pcolor" src="data:image/png;base64,{motif_pcolor}" />
-</div>
+<table>
+    <tr>
+        <td colspan="2">
+            <div class="pic100" id="plotly_{motif_name}"></div>
+            <script>
+                Plotly.newPlot('plotly_{motif_name}', {motif_reps}, {{}});
+            </script>
+        </td>
+        <td colspan="1">
+            <img class="pic100" alt="{motif_name} pcolor" src="data:image/png;base64,{motif_pcolor}" />
+        </td>
+    </tr>
+</table>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
@@ -139,7 +153,7 @@ motif_stringb64_reponly = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<img class="pic30" alt="{motif_name} repetitions" src="data:image/png;base64,{motif_reps}" />
+<img class="pic50" alt="{motif_name} repetitions" src="data:image/png;base64,{motif_reps}" />
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
