@@ -349,7 +349,7 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     fig.add_bar(y=dist_filt, text=dist_filt_text, marker_color='rgb(204, 204, 204, 0.4)', name='Filtered repetitions')
     fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Repetitions')
 
-    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=5)
+    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
     fig.update_layout(width=1000, height=500,
                       hovermode='x',
                       yaxis_fixedrange=True,

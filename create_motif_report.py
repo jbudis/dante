@@ -50,10 +50,16 @@ row_string = """  <tr>
   </tr>
 """
 
-heatmap_string = """
+plot_string = """
+<h2 id="map">Allele heatmap</h2>
 <div id="motif-heatmap"></div>
 <script>
     Plotly.newPlot('motif-heatmap', {heatmap}, {{}});
+</script>
+<h2 id="hist">Allele histogram</h2>
+<div id="motif-hist"></div>
+<script>
+    Plotly.newPlot('motif-hist', {histogram}, {{}});
 </script>
 """
 
@@ -116,25 +122,28 @@ def parse_label(num):
         return str(int(num))
 
 
-def generate_motif_report(path, key, samples, fig):
+def generate_motif_report(path, key, samples, fig_heatmap, fig_hist):
     """
     Generate report file for one motif
     :param path: str - path to output dir
     :param key: str - motif name
     :param samples: list - list of samples of selected motif
-    :param fig: str - heatmap object
+    :param fig_heatmap: str - heatmap object
+    :param fig_hist: str - histogram object
     """
     template = open('report/motif_report.html', 'r').read()
     rows = []
     key = key.replace('/', '-')
 
     for sample in samples:
-        rows.append(generate_row(sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6], sample[7]))
+        rows.append(generate_row(sample[0], sample[1], sample[2], sample[3],
+                                 sample[4], sample[5], sample[6], sample[7]))
 
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
-        heatmap = heatmap_string.format(heatmap=to_json(fig))
-        f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1], motifs_content=table, motif_heatmap=heatmap))
+        plots = plot_string.format(heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
+        f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
+                              motifs_content=table, motif_plots=plots))
 
 
 def create_reports(input_dir, output_dir):
@@ -182,18 +191,51 @@ def create_reports(input_dir, output_dir):
         for i in range(len(a1)):
             arr[a1[i], a2[i]] += 1
 
+        fig_histogram = go.Figure(data=[
+            go.Bar(y=np.sum(arr, axis=0), text=[parse_label(num) for num in np.sum(arr, axis=0)], name='Allele 2'),
+            go.Bar(y=np.sum(arr, axis=1), text=[parse_label(num) for num in np.sum(arr, axis=1)], name='Allele 1')
+        ])
+        fig_histogram.update_xaxes(title_text="Prediction")
+        fig_histogram.update_yaxes(title_text="Count")
+        fig_histogram.update_traces(hovertemplate="<b>Prediction:\t%{x}</b><br />Count:\t%{y}<br />", textfont_size=7)
+        fig_histogram.update_layout(width=1000, height=500, template='simple_white',
+                                    barmode='stack', yaxis_fixedrange=True, hovermode='x')
+
+        row_max, column_max = arr.shape
+        row_sum = np.sum(arr, axis=1)
+        row_count, column_count = 0, 0
+
+        for element in row_sum:
+            if element == 0:
+                row_count += 1
+            else:
+                break
+
+        column_sum = np.sum(arr, axis=0)
+
+        for element in column_sum:
+            if element == 0:
+                column_count += 1
+            else:
+                break
+
         text = [[parse_label(arr[i, j]) for j in range(arr.shape[1])] for i in range(arr.shape[0])]
 
         arr = arr / np.max(arr)
 
-        fig = go.Figure(go.Heatmap(z=list(arr), text=text, texttemplate="%{text}", textfont={"size": 10},
-                                   colorscale='Hot_r'))
-        fig.update_layout(width=750, height=750, template='simple_white')
-        fig.update_yaxes(title_text="Allele 1")
-        fig.update_xaxes(title_text="Allele 2")
+        fig_heatmap = go.Figure(data=[
+            go.Heatmap(z=list(arr), text=text, textfont={"size": 10}, colorscale='Hot_r',
+                       hovertemplate="<b>Allele 1:\t%{y}<br />Allele 2:\t%{x}</b><br />Count:\t%{text}",
+                       texttemplate="%{text}", name='Prediction heatmap')
+        ])
+        fig_heatmap.update_layout(width=750, height=750, template='simple_white',
+                                  yaxis=dict(range=[row_count-0.5, row_max-0.5]),
+                                  xaxis=dict(range=[column_count-0.5, column_max-0.5]))
+        fig_heatmap.update_yaxes(title_text="Allele 1")
+        fig_heatmap.update_xaxes(title_text="Allele 2")
 
         # generate motif
-        generate_motif_report(output_dir, _key, motifs[_key], fig)
+        generate_motif_report(output_dir, _key, motifs[_key], fig_heatmap, fig_histogram)
 
 
 if __name__ == '__main__':
