@@ -1,6 +1,7 @@
 # imports from dante files
 from arguments.input import nonempty_file
 from arguments import yaml_reader
+from prefiltering.SimpleFilter import base_mapping
 
 # imports from global libraries
 import argparse
@@ -22,6 +23,11 @@ class Repetition:
 
     def __repr__(self):
         return self.seq + '-' + str(self.num)
+
+
+def get_regexp(seq: str):
+    tmp = ''.join(base_mapping[ch] for ch in seq)
+    return tmp
 
 
 def load_arguments():
@@ -77,6 +83,8 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
     parser.add_argument('--quiet', help='Does not print errors and warning messages', action='store_true')
     parser.add_argument('--postfilter', help='Options to add to postfilter, for example "max_errors: 0.2" for 20% of errors allowed')
     parser.add_argument('--no-prefilter', help='Removes prefilter completely', action='store_true')
+    parser.add_argument('--nomenclature-column', help='Name of the column for nomenclature (default=nomenclature)', default='nomenclature')
+    parser.add_argument('--skip-check', help='Skip checks for the repetition parts. Good if you need to supply non-perfect nomenclatures.', action='store_true')
 
     args = parser.parse_args()
 
@@ -211,7 +219,7 @@ def parse_nomenclature(nc, flank):
     # get chromosome - number before dot
     try:
         dot = name.index('.')
-    except ValueError: # dot not found
+    except ValueError:  # dot not found
         dot = None
     chromosome = re.sub(r'[^\d]', '', name[:dot])
     chromosome = str(int(chromosome))
@@ -255,24 +263,25 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
     n_errors = 0
 
     for i, repetition in enumerate(rep_list):
-        rep_seq = re.sub('N', '.', repetition.seq)
+        rep_seq = repetition.seq
 
+        # check for deletions
         for zac in range(len(rep_seq)):
-            if re.match(rep_seq[zac:] + rep_seq[:zac], sequence):
+            if re.match(get_regexp(rep_seq[zac:] + rep_seq[:zac]), sequence):
                 rep_seq = rep_seq[zac:] + rep_seq[:zac]
-                repetition.seq = re.sub('\.', 'N', rep_seq)
+                repetition.seq = rep_seq[zac:] + rep_seq[:zac]
                 break
 
-        if not re.match(rep_seq, sequence):
+        # check
+        if not re.match(get_regexp(rep_seq), sequence):
             if i > 0:
                 if verbose:
-                    print(f'Error: Repetitive sequence {rep_list} does not match sequence from reference genome')
-                    print('Attempt to repair by increasing number of previous repetitions')
+                    print(f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
+                    print(f'       Attempt to repair by increasing number of previous repetitions')
                 # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence: GCAGCAGCAGCAATCATC, repetitions after repair: (GCA - 4, ATC - 2)
                 prev = rep_list[i - 1]
-                prev_seq = re.sub('N', '.', prev.seq)
-                while re.match(prev_seq, sequence):
-                    sequence = sequence[len(prev_seq):]
+                while re.match(get_regexp(prev.seq), sequence):
+                    sequence = sequence[len(prev.seq):]
                     prev.num += 1
                 if prev.num > list_rep[i-1].num:
                     prev.num -= n_errors
@@ -283,20 +292,19 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
 
                 if len(rep_list) > 1:
                     if verbose:
-                        print('Attempt to repair by skipping this repetition')
+                        print(f'       Attempt to repair by skipping this repetition')
                     # check if sequence match sequence from second repetition
                     # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence ATCATC, repetitions after repair: (GCA - 0, ATC - 2)
                     second_rep = rep_list[1]
-                    second_rep_seq = re.sub('N', '.', second_rep.seq)
-                    if re.match(second_rep_seq, sequence):
+                    if re.match(get_regexp(second_rep.seq), sequence):
                         repetition.num = 0
                         continue
 
                 if verbose:
-                    print('Attempt to repair by ignoring first nucleotides in repetitive sequence and adding them to flank')
+                    print(f'       Attempt to repair by ignoring first nucleotides in repetitive sequence and adding them to flank')
                 # check if sequence from first repetitions is in sequence
                 # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence "TCT"GCAGCAATCATC, after_repair: left_flank = left_flank + TCT
-                temp = re.search(rep_seq, sequence)
+                temp = re.search(get_regexp(rep_seq), sequence)
                 if temp is not None:
                     ind = temp.start()
                     seq_left = seq_left + sequence[:ind]
@@ -304,14 +312,14 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
 
         n_errors = 0
         for r in range(repetition.num):
-            if re.match(rep_seq, sequence):
+            if re.match(get_regexp(rep_seq), sequence):
                 sequence = sequence[len(rep_seq):]
             else:
-                temp = re.search(rep_seq, sequence)
+                temp = re.search(get_regexp(rep_seq), sequence)
                 if temp is not None and n_errors < max_errors:
                     if verbose:
-                        print(f'Error: Repetitive sequence {rep_list} does not match sequence from reference genome')
-                        print('Attempt to repair by ignoring this error')
+                        print(f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
+                        print(f'       Attempt to repair by ignoring this error')
                     n_errors += 1
                     error = True
                     if temp.start() <= len(rep_seq):
@@ -321,7 +329,7 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
                 else:
                     if verbose:
                         print(f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
-                        print('Attempt to repair by decreasing number of this repetition')
+                        print(f'       Attempt to repair by decreasing number of this repetition')
                     # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAATCATC, repetitions after repair: (GCA - 1, ATC - 2)
                     repetition.num = r
                     break
@@ -329,19 +337,18 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
     if sequence != '':
         if verbose:
             print(f'Error: Repetitive sequence {rep_list} does not match sequence from reference genome')
-            print('Attempt to repair by increasing number of previous repetitions')
+            print(f'       Attempt to repair by increasing number of previous repetitions')
         # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAGCAATCATCATCATC, repetitions after repair: (GCA - 2, ATC - 4)
         last = rep_list[-1]
-        last_seq = re.sub('N', '.', last.seq)
-        while re.match(last_seq, sequence):
-            sequence = sequence[len(last_seq):]
+        while re.match(get_regexp(last.seq), sequence):
+            sequence = sequence[len(last.seq):]
             last.num += 1
         if last.num > list_rep[-1].num:
             last.num -= n_errors
 
     if sequence != '':
         if verbose:
-            print('Attempt to repair failed. Adding nucleotides to right flank sequence')
+            print(f'       Attempt to repair failed. Adding nucleotides to right flank sequence')
         # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAGCAATCATC"CTG", after repair: right_flank = CTG + right_flank
         seq_right = sequence + seq_right
 
@@ -359,14 +366,13 @@ def check_left_flank(seq_left, list_rep, verbose=False):
     """
     rep_list = deepcopy(list_rep)
     first = rep_list[0]
-    first_seq = re.sub('N', '.', first.seq)
 
-    if re.match(first_seq, seq_left[-len(first_seq):]):
+    if re.match(get_regexp(first.seq), seq_left[-len(first.seq):]):
         if verbose:
             print('Repetitive sequence find in left flank region. Adding this sequence into repetitions.')
-        while re.match(first_seq, seq_left[-len(first_seq):]):
+        while re.match(get_regexp(first.seq), seq_left[-len(first.seq):]):
             # cut repetitive sequence from flank sequence and add it to the list of repetitive sequences
-            seq_left = seq_left[:-len(first_seq)]
+            seq_left = seq_left[:-len(first.seq)]
             first.num += 1
     return seq_left, rep_list
 
@@ -382,25 +388,25 @@ def check_right_flank(seq_right, list_rep, verbose=False):
     """
     rep_list = deepcopy(list_rep)
     last = rep_list[-1]
-    last_seq = re.sub('N', '.', last.seq)
 
-    if re.match(last_seq, seq_right):
+    if re.match(get_regexp(last.seq), seq_right):
         if verbose:
             print('Repetitive sequence find in right flank region. Adding this sequence into repetitions.')
-        while re.match(last_seq, seq_right):
+        while re.match(get_regexp(last.seq), seq_right):
             # cut repetitive sequence from flank sequence and add it to the list of repetitive sequences
-            seq_right = seq_right[len(last_seq):]
+            seq_right = seq_right[len(last.seq):]
             last.num += 1
     return seq_right, rep_list
 
 
-def compare_sequences(ref_seq, rep_list, flank, max_errors, verbose=False):
+def compare_sequences(ref_seq, rep_list, flank, max_errors, skip_check=False, verbose=False):
     """
     Compare (repair) sequence from repetitive area in the table and sequence from reference genome.
     :param ref_seq: str - sequence from reference genome
     :param rep_list: list(Repetition) - list of Repetitions(seq, num)
     :param flank: int - length of flank sequence
     :param max_errors: int - maximum number of errors in repetition
+    :param skip_check: bool - skip check of repetitions
     :param verbose: bool - be verbose
     :return: rep_list - list(Repetition) - updated list of Repetitions(seq, num)
              seq_left - str - left flank sequence
@@ -412,13 +418,15 @@ def compare_sequences(ref_seq, rep_list, flank, max_errors, verbose=False):
     seq_right = current_seq[-flank:]
     current_seq = current_seq[:-flank]
 
-    seq_left, seq_right, new_rep_list, error = check_repetitions(current_seq, seq_left, seq_right, rep_list, max_errors, verbose)
+    error = False
+    if not skip_check:
+        seq_left, seq_right, rep_list, error = check_repetitions(current_seq, seq_left, seq_right, rep_list, max_errors, verbose)
 
     # move repetitive sequence from flank sequence to list of repetitive sequences, if repetitive sequence is found in flank region
-    seq_left, new_rep_list = check_left_flank(seq_left, new_rep_list, verbose)
-    seq_right, new_rep_list = check_right_flank(seq_right, new_rep_list, verbose)
+    seq_left, rep_list = check_left_flank(seq_left, rep_list, verbose)
+    seq_right, rep_list = check_right_flank(seq_right, rep_list, verbose)
 
-    return new_rep_list, seq_left, seq_right, error
+    return rep_list, seq_left, seq_right, error
 
 
 def write_bases_repetitions(bases, repetitions, rep_list, min_flank, index, back):
@@ -700,7 +708,7 @@ if __name__ == "__main__":
     for i, (index, rows) in enumerate(table.iterrows()):
         if i % 100 == 0:
             print(f'Progress: {i:6d}/{len(table):6d}')
-        nomenclature = rows['nomenclature']
+        nomenclature = rows[args.nomenclature_column]
         disease = rows['disease']
         description = rows['description']
         gene = rows['gene' if 'gene' in rows else 'Gene']
@@ -710,11 +718,17 @@ if __name__ == "__main__":
         if str(nomenclature) == 'nan':
             er_empty_nom += 1
             if verbose:
-                print(f'Error: Skipping row ({disease} {description}) due to empty "nomenclature" ({nomenclature})')
+                print(f'Error: Skipping row due to empty "nomenclature" ({nomenclature})')
             continue
 
         # parse nomenclature (get information from nomenclature)
         ref_sequence, repetitions, chromosome, ref_start, ref_end = parse_nomenclature(nomenclature, args.flank)
+
+        # print motif name
+        if verbose:
+            print(f'Motif: {description}:')
+            print(f'       ref_sequence={ref_sequence}')
+            print(f'       nomenclature={nomenclature}')
 
         # skip motif if there is no sequence from reference genome or repetitive sequence from table
         if ref_sequence is None:
@@ -729,7 +743,7 @@ if __name__ == "__main__":
             continue
 
         # check if reference sequence and repetitive sequence are same (repair repetitive sequence if they are not same)
-        new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, args.flank, args.max_errors, verbose)
+        new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, args.flank, args.max_errors, args.skip_check, verbose)
 
         new_errors = False
         under_half = False
