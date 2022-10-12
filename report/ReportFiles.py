@@ -287,6 +287,44 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
     plt.savefig(out_prefix + '.png')
     plt.close()
 
+    # ----- PLOTLY HISTOGRAM -----
+    def parse_labels(num, num_primer):
+        if num == 0 and num_primer == 0:
+            return ''
+        elif num == 0 and num_primer != 0:
+            return '0/%s' % str(num_primer)
+        elif num != 0 and num_primer == 0:
+            return '%s/0' % str(num)
+        else:
+            return '%s/%s' % (str(num), str(num_primer))
+
+    str1 = 'STR %d [%s]' % (index_rep + 1, seq.split('-')[-1])
+    str2 = 'STR %d [%s]' % (index_rep2 + 1, seq2.split('-')[-1])
+
+    text = [[parse_labels(data[i, j], data_primer[i, j]) for j in range(data.shape[1])] for i in range(data.shape[0])]
+
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(z=data_primer[:max_ticks, :max_ticks], name='Repetitions heatmap',
+                             showscale=True, colorbar_x=1.3, colorbar_title='Partial reads', colorscale='Blues'))
+    fig.add_trace(go.Heatmap(z=data[:max_ticks, :max_ticks], text=text, name='Repetitions heatmap',
+                             showscale=True, colorbar_title='Full reads',
+                             colorscale=[[0.0, "rgba(255, 255, 255, 0.0)"],
+                                         [0.01, "rgba(249, 217, 201, 1.0)"],
+                                         [0.5, "rgba(229, 103, 76, 1.0)"],
+                                         [1.0, "rgba(143, 33, 29, 1.0)"]]))
+
+    fig.update_traces(texttemplate='%{text}', textfont_size=7,
+                      hovertemplate="<b>{name1}:\t%{y}<br />{name2}:\t%{x}</b><br />Full / Partial:\t%{text}".
+                      format(name1=str1, y='{y}', name2=str2, x='{x}', text='{text}'))
+    fig.update_layout(width=800, height=700, template='simple_white')
+    fig.update_yaxes(title_text=str1)
+    fig.update_xaxes(title_text=str2)
+
+    with open(out_prefix + '.json', 'w') as f:
+        f.write(fig.to_json())
+
+    # fig.write_image(out_prefix + '_plotly.pdf')
+
 
 def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     """
@@ -327,8 +365,23 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     _, max_y = plt.ylim()
     plt.xlim((0, xm + 1))
 
+    # label numbers
+    for rect, rect_filt in zip(rects, rects_filt):
+        height = rect.get_height()
+        height_filt = rect_filt.get_height()
+
+        if height > 0:
+            plt.text(rect.get_x() + rect.get_width() / 2., height + max_y / 100.0, '%d' % int(height), ha='center', va='bottom')
+        if height_filt != height:
+            plt.text(rect_filt.get_x() + rect_filt.get_width() / 2., height_filt + max_y / 100.0, '%d' % int(height_filt - height), ha='center', va='bottom', color='grey')
+
+    # output it
+    plt.savefig(out_prefix + '.pdf')
+    plt.savefig(out_prefix + '.png')
+    plt.close()
+
     # ----- PLOTLY HISTOGRAM -----
-    def get_filt_text(_dist_filt, _dist):
+    def parse_labels(_dist_filt, _dist):
         if _dist_filt == 0:
             return ""
         elif _dist_filt != 0 and _dist == 0:
@@ -342,11 +395,10 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
             return str(_dist_filt)
 
     dist_text = ["" if d == 0 else str(d) for d in dist]
-    dist_filt_text = [get_filt_text(df, d) for df, d in zip(dist_filt, dist)]
+    dist_filt_text = [parse_labels(df, d) for df, d in zip(dist_filt, dist)]
 
     fig = go.Figure()
-
-    fig.add_bar(y=dist_filt, text=dist_filt_text, marker_color='rgb(204, 204, 204, 0.4)', name='Filtered repetitions')
+    fig.add_bar(y=dist_filt, text=dist_filt_text, marker_color='rgb(204, 204, 204)', name='Filtered repetitions')
     fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Repetitions')
 
     fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
@@ -362,21 +414,6 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
         f.write(fig.to_json())
 
     # fig.write_image(out_prefix + '_plotly.pdf')
-
-    # label numbers
-    for rect, rect_filt in zip(rects, rects_filt):
-        height = rect.get_height()
-        height_filt = rect_filt.get_height()
-
-        if height > 0:
-            plt.text(rect.get_x() + rect.get_width() / 2., height + max_y / 100.0, '%d' % int(height), ha='center', va='bottom')
-        if height_filt != height:
-            plt.text(rect_filt.get_x() + rect_filt.get_width() / 2., height_filt + max_y / 100.0, '%d' % int(height_filt - height), ha='center', va='bottom', color='grey')
-
-    # output it
-    plt.savefig(out_prefix + '.pdf')
-    plt.savefig(out_prefix + '.png')
-    plt.close()
 
 
 def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, all_reads, motif_dir, motif_modules, index_rep, index_rep2, j, quiet=False):
@@ -589,8 +626,8 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
             for i, postfilter in enumerate(m['postfilter']):
                 # read files
                 rep_file = '%s/%s/repetitions_%d.json' % (output_dir, motif_name, i + 1)
-                if postfilter['index_rep2'] != 'no':
-                    rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
+                # if postfilter['index_rep2'] != 'no':
+                #     rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
                 if not os.path.exists(rep_file):
                     rep_file = None
                 pcol_file = '%s/%s/pcolor_%d.png' % (output_dir, motif_name, i + 1)
