@@ -95,13 +95,13 @@ class Annotator:
 
         # construct the emission probabilities: (sums to 1 for every quality)
         kp1 = {qual: key_position_prob(qual, 1) for qual in QUALITY_NUMS}
-        kn3 = {qual: (1 - kp1[qual] - BASE_N_PROB) / 3.0 for qual in QUALITY_NUMS}
+        kn3 = {qual: (1 - 1 * kp1[qual] - BASE_N_PROB) / 3.0 for qual in QUALITY_NUMS}
 
         kp2 = {qual: key_position_prob(qual, 2) for qual in QUALITY_NUMS}
-        kn2 = {qual: (1 - kp2[qual] - BASE_N_PROB) / 2.0 for qual in QUALITY_NUMS}
+        kn2 = {qual: (1 - 2 * kp2[qual] - BASE_N_PROB) / 2.0 for qual in QUALITY_NUMS}
 
         kp3 = {qual: key_position_prob(qual, 3) for qual in QUALITY_NUMS}
-        kn1 = {qual: (1 - kp3[qual] - BASE_N_PROB) / 1.0 for qual in QUALITY_NUMS}
+        kn1 = {qual: (1 - 3 * kp3[qual] - BASE_N_PROB) / 1.0 for qual in QUALITY_NUMS}
 
         nd = {qual: BASE_N_PROB for qual in QUALITY_NUMS}
 
@@ -110,7 +110,7 @@ class Annotator:
                               'G': {'A': kn3, 'C': kn3, 'G': kp1, 'T': kn3, 'N': nd},
                               'T': {'A': kn3, 'C': kn3, 'G': kn3, 'T': kp1, 'N': nd},
                               'M': {'A': kp2, 'C': kp2, 'G': kn2, 'T': kn2, 'N': nd},
-                              'R': {'A': kp2, 'C': kn2, 'G': kp2, 'T': kp2, 'N': nd},
+                              'R': {'A': kp2, 'C': kn2, 'G': kp2, 'T': kn2, 'N': nd},
                               'W': {'A': kp2, 'C': kn2, 'G': kn2, 'T': kp2, 'N': nd},
                               'S': {'A': kn2, 'C': kp2, 'G': kp2, 'T': kn2, 'N': nd},
                               'Y': {'A': kn2, 'C': kp2, 'G': kn2, 'T': kp2, 'N': nd},
@@ -155,7 +155,8 @@ class Annotator:
             self.repeats.append(code)
         for i, nucleotide in enumerate(sequence):
             # last = if it is not motif then True, else last - True if it is last.
-            self.__add_state(state_constructor(nucleotide, self.key_frequency[nucleotide], module_id, len(self.states), i == 0 or not is_motif, i == len(sequence) - 1 or not is_motif))
+            self.__add_state(state_constructor(nucleotide, self.key_frequency[nucleotide], module_id, len(self.states), i == 0 or not is_motif,
+                                               i == len(sequence) - 1 or not is_motif))
 
     def __trans_probability(self, from_pos, to_pos):
         """
@@ -182,16 +183,6 @@ class Annotator:
         """
         existing_prob = self.__trans_probability(from_pos, to_pos)
         self.trans[self.states[from_pos]][self.states[to_pos]] = prob + existing_prob if join else max(prob, existing_prob)
-
-    """
-    def __crange(self, motif_start, i, j, n):
-        k = ((i - motif_start) + 1) % n
-        ret = []
-        while motif_start + k != j:
-            ret.append(motif_start + k)
-            k = (k + 1) % n
-        return ret
-    """
 
     # TODO verify this method, mainly skips inside cycles
     def __connect_deletions(self):
@@ -372,15 +363,17 @@ class Annotator:
         for state in self.states:
             emission = [state.emission[nucleotide] for nucleotide in NUCLEOTIDES]
             emit.append(emission)
-
         emit_np = np.array(emit)
-        for s, _ in enumerate(self.states):
-            emit_state = emit_np[s, :]
+
+        # check if they sum to 1
+        for i, state in enumerate(self.states):
+            emit_state = emit_np[i, :]
             if type(emit_state[0]) == dict:
                 for q, _ in enumerate(QUALITY_CODES):
                     assert np.isclose(np.sum([emit_state[n][q] for n, _ in enumerate(NUCLEOTIDES)]), np.array(1.0)), \
-                        "Emissions does not sum to 1, %s, %s" % (state, emission)
+                        "Emissions does not sum to 1, %s, %s" % (state, [emit_state[n][q] for n, _ in enumerate(NUCLEOTIDES)])
             else:
+                emission = [state.emission[nucleotide] for nucleotide in NUCLEOTIDES]
                 assert np.isclose(np.sum(emission), np.array(1.0)), "Emissions does not sum to 1, %s, %s" % (state, emission)
         return emit_np
 
