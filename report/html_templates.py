@@ -134,9 +134,9 @@ alleles: {result}<br>
 <table>
     <tr>
         <td colspan="2">
-            <div class="pic100" id="plotly_{motif_name}"></div>
+            <div class="pic100" id="hist_{motif_name}"></div>
             <script>
-                Plotly.newPlot('plotly_{motif_name}', {motif_reps}, {{}});
+                Plotly.newPlot('hist_{motif_name}', {motif_reps}, {{}});
             </script>
         </td>
         <td colspan="1">
@@ -153,7 +153,10 @@ motif_stringb64_reponly = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<img class="pic50" alt="{motif_name} repetitions" src="data:image/png;base64,{motif_reps}" />
+<div class="pic50" id="hist2d_{motif_name}"></div>
+<script>
+    Plotly.newPlot('hist2d_{motif_name}', {motif_reps}, {{}});
+</script>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
@@ -295,11 +298,13 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
 
     # return content and picture parts:
     if repetition is not None:
-        if postfilter['index_rep2'] != 'no':
-            reps = base64.b64encode(open(repetition, "rb").read())
-            reps = reps.decode("utf-8")
-        else:
-            reps = open(repetition, 'r').read()
+        # if postfilter['index_rep2'] != 'no':
+        #     reps = base64.b64encode(open(repetition, "rb").read())
+        #     reps = reps.decode("utf-8")
+        # else:
+        #     reps = open(repetition, 'r').read()
+
+        reps = open(repetition, 'r').read()
         align_html = generate_alignment(motif_name, alignment)
 
         if pcolor is not None:
