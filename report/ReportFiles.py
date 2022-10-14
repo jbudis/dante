@@ -402,7 +402,8 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Repetitions')
 
     fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
-    fig.update_layout(width=1000, height=500,
+    fig.update_layout(width=800, height=450,
+                      title='Histogram of repetitions',
                       hovermode='x',
                       yaxis_fixedrange=True,
                       template='simple_white',
@@ -630,7 +631,7 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
                 #     rep_file = '%s/%s/repetitions_%d.png' % (output_dir, motif_name, i + 1)
                 if not os.path.exists(rep_file):
                     rep_file = None
-                pcol_file = '%s/%s/pcolor_%d.png' % (output_dir, motif_name, i + 1)
+                pcol_file = '%s/%s/pcolor_%d.json' % (output_dir, motif_name, i + 1)
                 if not os.path.exists(pcol_file):
                     pcol_file = None
                 align_file = '%s/%s/alignment_%d.fasta' % (output_dir, motif_name, i + 1)
