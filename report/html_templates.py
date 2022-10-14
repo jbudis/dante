@@ -4,10 +4,10 @@ import json
 import os
 
 contents = """
-<table class="tg" id="content-tg">
+<table class="mtg" id="content-tg">
     <thead>
         <tr>
-            <th class="tg-S6z2">Motif</th>
+            <th class="mtg-s6z2">Motif</th>
         </tr>
     </thead>
     <tbody>
@@ -23,7 +23,7 @@ contents = """
 """
 
 content_string = """ <tr>
-<td class="tg-s6z2">
+<td class="mtg-s6z2">
 <button class="tablinks" onclick="openTab(event, '{motif_name}')">
 <a href="#{motif_name}">{motif}</a>
 </button>

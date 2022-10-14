@@ -85,3 +85,15 @@ Finally, in case you did not mess with generated config files, directories "Dant
 
 Dante uses the same stutter parameters for all motifs (which we will probably change in later versions), so we recommend to use similarly behaving motifs together (motifs that have the same or similar length of repetition). The training is usually done under a minute, and we recommend to use maximal possible number of samples to achieve best results. 
 
+## Creating motif reports
+
+To collect results from multiple reports and group them by motif, we provide a script `create_motif_report.py`. It has one required and one optional argument: `input dir` and `output dir`. Input dir is a path to folder with reports from samples. There can be other files as well, the script filters out all files that don't match `*.html`. Output dir is a path to directory, where the motif reports will be generated. If the path isn't specified, the script generates reports to `example/motif_report`.
+
+After running Dante on example dataset, you may run this script as:
+
+```bash
+python create_motif_report.py example/report [example/motif_report]
+```
+
+Script generates separate report for each unique motif in Dante reports. Script uses the file name of the report to differentiate the source of result in table, so it is recommended to rename the reports before starting this script, so no two reports have the same name.
+
