@@ -109,7 +109,7 @@ def generate_row(motif_name, a1, c1, a2, c2, c, reads_blue, reads_grey):
 
 # Convert extracted numbers from table to ints and set background and expanded alleles to 0
 def parse_alleles(num):
-    if num == 'B' or num == 'E':
+    if num == 'B' or num == 'E' or num == '---':
         return 0
     else:
         return int(num)
@@ -141,13 +141,9 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist):
 
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
-        if fig_heatmap != {}:
-            plots = plot_string.format(heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
-            f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
-                                  motifs_content=table, motif_plots=plots))
-        else:
-            f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
-                                  motifs_content=table, motif_plots=''))
+        plots = plot_string.format(heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
+        f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
+                              motifs_content=table, motif_plots=plots))
 
 
 def create_reports(input_dir, output_dir):
@@ -192,10 +188,6 @@ def create_reports(input_dir, output_dir):
 
     # create heatmap of alleles
     for _key in motifs.keys():
-        if motifs[_key][0][1] == '---':
-            generate_motif_report(output_dir, _key, motifs[_key], {}, {})
-            continue
-
         a1 = [parse_alleles(row[1]) for row in motifs[_key]]
         a2 = [parse_alleles(row[3]) for row in motifs[_key]]
 
