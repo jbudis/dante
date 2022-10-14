@@ -7,6 +7,7 @@ import sys
 
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as PathEffects
+import plotly.graph_objects as go
 from copy import copy
 
 
@@ -469,6 +470,8 @@ class Inference:
             else:
                 lh_view = lh_array
 
+            lh_copy = lh_view.copy()
+
             # background:
             bg_size = max(2, (len(lh_view) - self.min_rep) // 6)
             if len(lh_view) - self.min_rep <= 6:
@@ -476,6 +479,9 @@ class Inference:
             lh_view[-bg_size:, self.min_rep:self.min_rep + bg_size] = lh_view[0, 0]
             # expanded
             lh_view[-bg_size:, self.min_rep + bg_size:self.min_rep + 2 * bg_size] = lh_view[0, self.max_rep]
+
+            lh_copy[-1, self.min_rep] = lh_copy[0, 0]
+            lh_copy[-1, self.min_rep + 1] = lh_copy[0, self.max_rep]
 
             # plotting
             plt.title("%s likelihood of each option for %s" % ("Loglog" if lognorm else "Log", name))
@@ -505,6 +511,44 @@ class Inference:
             plt.savefig(display_file + '.pdf')
             plt.savefig(display_file + '.png')
             plt.close()
+
+            # ----- PLOTLY HISTOGRAM -----
+            text = [['' for _ in range(max_str - self.min_rep)] for _ in range(max_str - self.min_rep)]
+            text[max_str - self.min_rep - 1][0] = 'BG'
+            text[max_str - self.min_rep - 1][1] = 'Exp'
+
+            fig = go.Figure()
+            fig.add_trace(go.Heatmap(z=lh_copy[self.min_rep:, self.min_rep:],
+                                     text=text, name='pcolor',
+                                     showscale=True, colorscale='Jet'))
+            fig.add_vline(x=max_str - self.min_rep - 0.5,
+                          line_width=5, line_color='black', opacity=1)
+            # fig.add_annotation(text='BG', xref='x domain', yref='y domain', xanchor='center', yanchor='middle',
+            #                    x=(float(bg_size) / 2.0) / lh_view.shape[1],
+            #                    y=(max_str - self.min_rep - float(bg_size) / 2.0) / lh_view.shape[0],
+            #                    font_size=20, showarrow=False)
+            # fig.add_annotation(text='Exp', xref='x domain', yref='y domain', xanchor='center', yanchor='middle',
+            #                    x=(bg_size + float(bg_size) / 2.0) / lh_view.shape[1],
+            #                    y=(max_str - self.min_rep - float(bg_size) / 2.0) / lh_view.shape[0],
+            #                    font_size=20, showarrow=False)
+
+            fig.update_traces(texttemplate='%{text}', textfont_size=15,
+                              hovertemplate='<b>{log} likelihood:\t%{z}</b>'.format(log='Loglog' if lognorm else 'Log', z='{z}'))
+            fig.update_layout(width=500, height=450,
+                              template='simple_white',
+                              yaxis_fixedrange=True, xaxis_fixedrange=True,
+                              title='%s likelihood of each option for %s' % ('Loglog' if lognorm else 'Log', name))
+            fig.update_yaxes(title_text='1st allele', tickmode='array',
+                             tickvals=np.array(range(start_ticks - self.min_rep, max_str - self.min_rep, step_ticks)),
+                             ticktext=list(range(start_ticks, max_str, step_ticks)))
+            fig.update_xaxes(title_text='2nd allele', tickmode='array',
+                             tickvals=np.concatenate([np.array(range(start_ticks - self.min_rep, max_str - self.min_rep, step_ticks)), [max_str - self.min_rep]]),
+                             ticktext=list(range(start_ticks, max_str, step_ticks)) + ['E(>%d)' % (self.max_with_e - 2)])
+
+            with open(display_file + '.json', 'w') as f:
+                f.write(fig.to_json())
+
+            fig.write_image(display_file + '_plotly.png')
 
         # output best option
         best = sorted(np.unravel_index(np.argmax(lh_array), lh_array.shape))

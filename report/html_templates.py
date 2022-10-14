@@ -140,7 +140,10 @@ alleles: {result}<br>
             </script>
         </td>
         <td colspan="1">
-            <img class="pic100" alt="{motif_name} pcolor" src="data:image/png;base64,{motif_pcolor}" />
+            <div class="pic100" id="pcol_{motif_name}"></div>
+            <script>
+                Plotly.newPlot('pcol_{motif_name}', {motif_pcolor}, {{}});
+            </script>
         </td>
     </tr>
 </table>
@@ -308,8 +311,9 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
         align_html = generate_alignment(motif_name, alignment)
 
         if pcolor is not None:
-            pcol = base64.b64encode(open(pcolor, "rb").read())
-            pcol = pcol.decode("utf-8")
+            # pcol = base64.b64encode(open(pcolor, "rb").read())
+            # pcol = pcol.decode("utf-8")
+            pcol = open(pcolor, 'r').read()
             return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
                    motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                           motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
