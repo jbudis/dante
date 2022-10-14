@@ -141,9 +141,13 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist):
 
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
-        plots = plot_string.format(heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
-        f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
-                              motifs_content=table, motif_plots=plots))
+        if fig_heatmap != {}:
+            plots = plot_string.format(heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
+            f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
+                                  motifs_content=table, motif_plots=plots))
+        else:
+            f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
+                                  motifs_content=table, motif_plots=''))
 
 
 def create_reports(input_dir, output_dir):
@@ -167,26 +171,31 @@ def create_reports(input_dir, output_dir):
         fname = path.split('/')[-1].split('.')[0]
 
         # find table of class 'tg' and extract all rows from it
-        for row in file.find(class_='tg').find_all('tr'):
-            columns = row.find_all('td')
+        for cl in file.find_all(class_='tg'):
+            for row in cl.find_all('tr'):
+                columns = row.find_all('td')
 
-            # remove head rows
-            if columns == [] or columns[0].text.strip() == 'prediction':
-                continue
+                # remove head rows
+                if columns == [] or columns[0].text.strip() == 'prediction':
+                    continue
 
-            if columns:
-                name = columns[0].text.strip() + '_' + columns[1].text.strip()
-                doc = [fname, columns[2].text.strip(), columns[3].text.strip().replace('%', ''),
-                       columns[4].text.strip(), columns[5].text.strip().replace('%', ''),
-                       columns[6].text.strip().replace('%', ''), columns[7].text.strip(), columns[8].text.strip()]
+                if columns:
+                    name = columns[0].text.strip() + '_' + columns[1].text.strip()
+                    doc = [fname, columns[2].text.strip(), columns[3].text.strip().replace('%', ''),
+                           columns[4].text.strip(), columns[5].text.strip().replace('%', ''),
+                           columns[6].text.strip().replace('%', ''), columns[7].text.strip(), columns[8].text.strip()]
 
-                if name not in motifs:
-                    motifs[name] = [doc]
-                else:
-                    motifs[name].append(doc)
+                    if name not in motifs:
+                        motifs[name] = [doc]
+                    else:
+                        motifs[name].append(doc)
 
     # create heatmap of alleles
     for _key in motifs.keys():
+        if motifs[_key][0][1] == '---':
+            generate_motif_report(output_dir, _key, motifs[_key], {}, {})
+            continue
+
         a1 = [parse_alleles(row[1]) for row in motifs[_key]]
         a2 = [parse_alleles(row[3]) for row in motifs[_key]]
 
