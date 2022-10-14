@@ -158,6 +158,10 @@ def create_reports(input_dir, output_dir):
 
     motifs = {}
 
+    if len(paths) == 0:
+        print("Error: input directory is empty")
+        return
+
     for path in paths:
         file = BeautifulSoup(open(path, 'r'), 'html.parser')
         fname = path.split('/')[-1].split('.')[0]
