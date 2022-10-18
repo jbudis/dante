@@ -548,7 +548,7 @@ class Inference:
             with open(display_file + '.json', 'w') as f:
                 f.write(fig.to_json())
 
-            fig.write_image(display_file + '_plotly.png')
+            # fig.write_image(display_file + '_plotly.png')
 
         # output best option
         best = sorted(np.unravel_index(np.argmax(lh_array), lh_array.shape))
