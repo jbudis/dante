@@ -24,7 +24,7 @@ contents = """
 
 content_string = """ <tr>
 <td class="mtg-s6z2">
-<button class="tablinks" onclick="openTab(event, '{motif_name}')">
+<button class="tablinks" onclick="openTab(event, '{motif_name}'); $('.{motif_name}').trigger('content-change');">
 <a href="#{motif_name}">{motif}</a>
 </button>
 </td>
@@ -67,7 +67,7 @@ row_string_empty_old = """  <tr>
 row_string_empty = ""
 
 motif_summary = """
-<div class="tabcontent" id="{motif_name}">
+<div class="tabcontent" id="{motif_name}" style="display: none">
 <h2 id="summary">Summary table</h2>
 <table class="tg" id="{motif_tg}_tg">
     <thead>
@@ -134,15 +134,35 @@ alleles: {result}<br>
 <table>
     <tr>
         <td colspan="2">
-            <div class="pic100" id="hist_{motif_name}"></div>
+            <div class="pic100 {motif_id}" id="hist_{motif_name}"></div>
             <script>
-                Plotly.newPlot('hist_{motif_name}', {motif_reps}, {{}});
+                const hist_data_{motif_name} = {motif_reps};
+                $(document).ready( function() {{
+                    $('.{motif_id}').bind("content-change", function() {{
+                        if (document.getElementById('{motif_id}').style.display === 'block') {{
+                            Plotly.react('hist_{motif_name}', hist_data_{motif_name}, {{}});
+                        }}
+                        else {{
+                            Plotly.react('hist_{motif_name}', {{}}, {{}});
+                        }}
+                    }})
+                }})
             </script>
         </td>
         <td colspan="1">
-            <div class="pic100" id="pcol_{motif_name}"></div>
+            <div class="pic100 {motif_id}" id="pcol_{motif_name}"></div>
             <script>
-                Plotly.newPlot('pcol_{motif_name}', {motif_pcolor}, {{}});
+                const pcol_data_{motif_name} = {motif_pcolor};
+                $(document).ready( function() {{
+                    $('.{motif_id}').bind("content-change", function() {{
+                        if (document.getElementById('{motif_id}').style.display === 'block') {{
+                            Plotly.react('pcol_{motif_name}', pcol_data_{motif_name}, {{}});
+                        }}
+                        else {{
+                            Plotly.react('pcol_{motif_name}', {{}}, {{}});
+                        }}
+                    }})
+                }})
             </script>
         </td>
     </tr>
@@ -156,9 +176,19 @@ motif_stringb64_reponly = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<div class="pic50" id="hist2d_{motif_name}"></div>
+<div class="pic50 {motif_id}" id="hist2d_{motif_name}"></div>
 <script>
-    Plotly.newPlot('hist2d_{motif_name}', {motif_reps}, {{}});
+    const hist2d_data_{motif_name} = {motif_reps};
+    $(document).ready( function() {{
+        $('.{motif_id}').bind("content-change", function() {{
+            if (document.getElementById('{motif_id}').style.display === 'block') {{
+                Plotly.react('hist2d_{motif_name}', hist2d_data_{motif_name}, {{}});
+            }}
+            else {{
+                Plotly.react('hist2d_{motif_name}', {{}}, {{}});
+            }}
+        }})
+    }})
 </script>
 {alignment}
 <p><a href="#content">Back to content</a></p>
@@ -316,13 +346,15 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             pcol = open(pcolor, 'r').read()
             return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
                    motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
-                                          motif_pcolor=pcol, alignment=align_html + align_html_a1 + align_html_a2,
+                                          motif_name=motif_name, motif_id=motif_name.split('_')[0], motif=motif,
+                                          motif_reps=reps, result=result, motif_pcolor=pcol,
+                                          alignment=align_html + align_html_a1 + align_html_a2,
                                           sequence=sequence, errors=errors)
         else:
             return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
                    motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                  motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
+                                                  motif_name=motif_name.replace(',', '_'), motif_id=motif_name.split('_')[0],
+                                                  motif=motif, motif_reps=reps, result=result,
                                                   alignment=align_html + align_html_a1 + align_html_a2,
                                                   sequence=sequence, errors=errors)
 
