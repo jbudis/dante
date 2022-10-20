@@ -186,19 +186,23 @@ def create_reports(input_dir, output_dir):
                     else:
                         motifs[name].append(doc)
 
-    # create heatmap of alleles
+    # create histogram of read counts
     for _key in motifs.keys():
         a1 = [parse_alleles(row[1]) for row in motifs[_key]]
         a2 = [parse_alleles(row[3]) for row in motifs[_key]]
 
         arr = np.zeros((max(a1) + 1, max(a2) + 1))
 
+        max_count = max(max(a1), max(a2))
+        hist_arr = [0 for _ in range(max_count + 1)]
+
         for i in range(len(a1)):
             arr[a1[i], a2[i]] += 1
+            hist_arr[a1[i]] += 1
+            hist_arr[a2[i]] += 1
 
         fig_histogram = go.Figure(data=[
-            go.Bar(y=np.sum(arr, axis=0), text=[parse_label(num) for num in np.sum(arr, axis=0)], name='Allele 2'),
-            go.Bar(y=np.sum(arr, axis=1), text=[parse_label(num) for num in np.sum(arr, axis=1)], name='Allele 1')
+            go.Bar(y=hist_arr, text=[parse_label(num) for num in hist_arr], name='Count histogram'),
         ])
         fig_histogram.update_xaxes(title_text="Prediction")
         fig_histogram.update_yaxes(title_text="Count")
@@ -228,6 +232,7 @@ def create_reports(input_dir, output_dir):
 
         arr = arr / np.max(arr)
 
+        # create heatmap of alleles
         fig_heatmap = go.Figure(data=[
             go.Heatmap(z=list(arr), text=text, textfont={"size": 10}, colorscale='Hot_r',
                        hovertemplate="<b>Allele 1:\t%{y}<br />Allele 2:\t%{x}</b><br />Count:\t%{text}",
