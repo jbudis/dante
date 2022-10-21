@@ -316,7 +316,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     sequence, subpart = highlight_subpart(sequence, highlight)
     motif = '%s &ndash; %s' % (motif_name, description)
     motif_name = '%s_%s' % (motif_name, ','.join(map(str, highlight)) if highlight is not None else 'mot')
-    motif_clean = re.sub(r'[\s+:,]', '', motif_name)
+    motif_clean = re.sub(r'[^\w_\-]', '', motif_name)
     align_html_a1 = ''
     align_html_a2 = ''
     if confidence is None:

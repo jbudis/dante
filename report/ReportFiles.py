@@ -688,7 +688,7 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
 
         for motif in sorted(motifs, key=lambda x: x['full_name']):
             m = motif['full_name']
-            motif_clean = re.sub(r'[\s+:,]', '', m)
+            motif_clean = re.sub(r'[^\w_\-]', '', m)
             tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean, motif_tgf=motif_clean, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
 
         f.write(custom_format(template, motifs='\n'.join(tabs)))
