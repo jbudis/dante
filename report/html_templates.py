@@ -2,6 +2,7 @@ import base64
 import numpy as np
 import json
 import os
+import re
 
 contents = """
 <table class="mtg" id="content-tg">
@@ -69,7 +70,7 @@ row_string_empty = ""
 motif_summary = """
 <div class="tabcontent" id="{motif_name}" style="display: none">
 <h2 id="summary">Summary table</h2>
-<table class="tg" id="{motif_tg}_tg">
+<table class="tg" id="tg-{motif_tg}">
     <thead>
         <tr>
             <th class="tg-s6z2" rowspan="2">Motif</th>
@@ -100,7 +101,7 @@ motif_summary = """
 
 <script>
     $(document).ready( function () {{
-    $('#{motif_tg}_tg').DataTable();
+    $('#tg-{motif_tg}').DataTable();
 }} );
 </script>
 <p><a href="#content">Back to content</a></p>
@@ -134,35 +135,39 @@ alleles: {result}<br>
 <table>
     <tr>
         <td colspan="2">
-            <div class="pic100 {motif_id}" id="hist_{motif_name}"></div>
+            <div class="pic100 {motif_id}" id="hist-{motif_name}"></div>
             <script>
-                const hist_data_{motif_name} = {motif_reps};
-                $(document).ready( function() {{
-                    $('.{motif_id}').bind("content-change", function() {{
-                        if (document.getElementById('{motif_id}').style.display === 'block') {{
-                            Plotly.react('hist_{motif_name}', hist_data_{motif_name}, {{}});
-                        }}
-                        else {{
-                            Plotly.react('hist_{motif_name}', {{}}, {{}});
-                        }}
+                {{
+                    let hist_data = {motif_reps};
+                    $(document).ready( function() {{
+                        $('.{motif_id}').bind("content-change", function() {{
+                            if (document.getElementById('{motif_id}').style.display === 'block') {{
+                                Plotly.react('hist-{motif_name}', hist_data, {{}});
+                            }}
+                            else {{
+                                Plotly.react('hist-{motif_name}', {{}}, {{}});
+                            }}
+                        }})
                     }})
-                }})
+                }}
             </script>
         </td>
         <td colspan="1">
-            <div class="pic100 {motif_id}" id="pcol_{motif_name}"></div>
+            <div class="pic100 {motif_id}" id="pcol-{motif_name}"></div>
             <script>
-                const pcol_data_{motif_name} = {motif_pcolor};
-                $(document).ready( function() {{
-                    $('.{motif_id}').bind("content-change", function() {{
-                        if (document.getElementById('{motif_id}').style.display === 'block') {{
-                            Plotly.react('pcol_{motif_name}', pcol_data_{motif_name}, {{}});
-                        }}
-                        else {{
-                            Plotly.react('pcol_{motif_name}', {{}}, {{}});
-                        }}
+                {{
+                    let pcol_data = {motif_pcolor};
+                    $(document).ready( function() {{
+                        $('.{motif_id}').bind("content-change", function() {{
+                            if (document.getElementById('{motif_id}').style.display === 'block') {{
+                                Plotly.react('pcol-{motif_name}', pcol_data, {{}});
+                            }}
+                            else {{
+                                Plotly.react('pcol-{motif_name}', {{}}, {{}});
+                            }}
+                        }})
                     }})
-                }})
+                }}
             </script>
         </td>
     </tr>
@@ -176,19 +181,21 @@ motif_stringb64_reponly = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<div class="pic50 {motif_id}" id="hist2d_{motif_name}"></div>
+<div class="pic50 {motif_id}" id="hist2d-{motif_name}"></div>
 <script>
-    const hist2d_data_{motif_name} = {motif_reps};
-    $(document).ready( function() {{
-        $('.{motif_id}').bind("content-change", function() {{
-            if (document.getElementById('{motif_id}').style.display === 'block') {{
-                Plotly.react('hist2d_{motif_name}', hist2d_data_{motif_name}, {{}});
-            }}
-            else {{
-                Plotly.react('hist2d_{motif_name}', {{}}, {{}});
-            }}
+    {{
+        let hist2d_data = {motif_reps};
+        $(document).ready( function() {{
+            $('.{motif_id}').bind("content-change", function() {{
+                if (document.getElementById('{motif_id}').style.display === 'block') {{
+                    Plotly.react('hist2d-{motif_name}', hist2d_data, {{}});
+                }}
+                else {{
+                    Plotly.react('hist2d-{motif_name}', {{}}, {{}});
+                }}
+            }})
         }})
-    }})
+    }}
 </script>
 {alignment}
 <p><a href="#content">Back to content</a></p>
@@ -309,6 +316,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     sequence, subpart = highlight_subpart(sequence, highlight)
     motif = '%s &ndash; %s' % (motif_name, description)
     motif_name = '%s_%s' % (motif_name, ','.join(map(str, highlight)) if highlight is not None else 'mot')
+    motif_clean = re.sub(r'[^\w_\-]', '', motif_name)
     align_html_a1 = ''
     align_html_a2 = ''
     if confidence is None:
@@ -344,16 +352,16 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             # pcol = base64.b64encode(open(pcolor, "rb").read())
             # pcol = pcol.decode("utf-8")
             pcol = open(pcolor, 'r').read()
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
+            return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
                    motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif_id=motif_name.split('_')[0], motif=motif,
+                                          motif_name=motif_clean, motif_id=motif_clean.split('_')[0], motif=motif,
                                           motif_reps=reps, result=result, motif_pcolor=pcol,
                                           alignment=align_html + align_html_a1 + align_html_a2,
                                           sequence=sequence, errors=errors)
         else:
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
+            return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
                    motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                  motif_name=motif_name.replace(',', '_'), motif_id=motif_name.split('_')[0],
+                                                  motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
                                                   motif=motif, motif_reps=reps, result=result,
                                                   alignment=align_html + align_html_a1 + align_html_a2,
                                                   sequence=sequence, errors=errors)
