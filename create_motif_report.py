@@ -215,7 +215,7 @@ def create_reports(input_dir, output_dir):
         for i in range(len(a1)):
             if a2[i] == 'E':
                 if a1[i] == 'E':
-                    arr[a1_max, a2_max + 1] += 1
+                    arr[a1_max + 1, a2_max + 1] += 1
                 else:
                     arr[a1[i], a2_max + 1] += 1
                 hist_arr[-1] += 1
@@ -269,6 +269,7 @@ def create_reports(input_dir, output_dir):
                        texttemplate="%{text}", name='Prediction heatmap')
         ])
         fig_heatmap.add_vline(x=a2_max + 0.5, line_width=5, line_color='black', opacity=1)
+        fig_heatmap.add_hline(y=a1_max + 0.5, line_width=5, line_color='black', opacity=1)
         fig_heatmap.update_layout(width=750, height=750, template='simple_white',
                                   yaxis=dict(range=[row_count-1.5, row_max-0.5]),
                                   xaxis=dict(range=[column_count-1.5, column_max-0.5]))
