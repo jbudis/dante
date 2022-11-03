@@ -26,6 +26,12 @@ Furthermore, if you need to use the config converter program `make_config.py`, y
 pip install ensembl_rest==0.3.3
 ```
 
+If you want to use `create_motif_report.py` script to aggregate reports by motif, you will need to install additional `beautifulsoup4` dependency:
+
+```bash
+conda install beautifulsoup4
+```
+
 (To do this on some very old systems, you need to install openssl to your conda environment with `conda install -c conda-forge openssl==3.0.5`.)
 
 ### Example dataset
@@ -78,4 +84,16 @@ This call creates a file "Dante_outputs/params.txt" with new stutter parameters 
 Finally, in case you did not mess with generated config files, directories "Dante_outputs/sample1_retrained", "Dante_outputs/sample2_retrained", "Dante_outputs/sample3_retrained" contain Dante results with trained stutter parameters.
 
 Dante uses the same stutter parameters for all motifs (which we will probably change in later versions), so we recommend to use similarly behaving motifs together (motifs that have the same or similar length of repetition). The training is usually done under a minute, and we recommend to use maximal possible number of samples to achieve best results. 
+
+## Creating motif reports
+
+To collect results from multiple reports and group them by motif, we provide a script `create_motif_report.py`. It has one required and one optional argument: `input dir` and `output dir`. Input dir is a path to folder with reports from samples. There can be other files as well, the script filters out all files that don't match `*.html`. Output dir is a path to directory, where the motif reports will be generated. If the path isn't specified, the script generates reports to `example/motif_report`.
+
+After running Dante on example dataset, you may run this script as:
+
+```bash
+python create_motif_report.py example/report [example/motif_report]
+```
+
+Script generates separate report for each unique motif in Dante reports. Script uses the file name of the report to differentiate the source of result in table, so it is recommended to rename the reports before starting this script, so no two reports have the same name.
 

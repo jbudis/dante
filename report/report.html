@@ -27,12 +27,12 @@
             line-height: 1.5
         }
 
-        .tg {
+        .tg, .mtg {
             border-collapse: collapse;
             border-spacing: 0;
         }
 
-        .tg td {
+        .tg td, .mtg td {
             padding: 10px 5px;
             border-style: solid;
             border-width: 1px;
@@ -40,7 +40,7 @@
             word-break: normal;
         }
 
-        .tg th {
+        .tg th, .mtg th {
             font-weight: normal;
             padding: 10px 5px;
             border-style: solid;
@@ -49,15 +49,13 @@
             word-break: normal;
         }
 
-        .tg .tg-s6z2 {
+        .tg .tg-s6z2, .mtg .mtg-s6z2 {
             text-align: center
         }
 
         /* Style the tab */
         .tab {
             float: left;
-            border: 1px solid #ccc;
-            background-color: #f1f1f1;
             width: 100%;
             height: auto;
         }
@@ -67,7 +65,7 @@
             display: block;
             background-color: inherit;
             color: black;
-            padding: 22px 16px;
+            padding: 10px 8px 10px 8px;
             width: 100%;
             border: none;
             outline: none;
@@ -89,26 +87,19 @@
         /* Style the tab content */
         .tabcontent {
             float: left;
-            padding: 0 12px;
-            border: 1px solid #ccc;
             width: 100%;
             border-left: none;
             height: auto;
         }
 
-        .row {
-            display: flex;
-            justify-content: space-evenly;
-        }
-
-        .pic60 {
-            width: 60% !important;
+        .pic100 {
+            width: 100%;
             height: auto;
         }
 
-        .pic30 {
-            width: 30% !important;
-            height: 30% !important;
+        .pic50 {
+            width: 50%;
+            height: auto;
         }
     </style>
 </head>
@@ -144,9 +135,6 @@
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.className += " active";
     }
-</script>
-<script>
-    var mybtn = document.getElementsByClassName("tablinks")[0]; mybtn.click();
 </script>
 </body>
 </html>

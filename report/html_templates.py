@@ -2,12 +2,13 @@ import base64
 import numpy as np
 import json
 import os
+import re
 
 contents = """
-<table class="tg" id="content-tg">
+<table class="mtg" id="content-tg">
     <thead>
         <tr>
-            <th class="tg-S6z2">Motif</th>
+            <th class="mtg-s6z2">Motif</th>
         </tr>
     </thead>
     <tbody>
@@ -23,8 +24,8 @@ contents = """
 """
 
 content_string = """ <tr>
-<td class="tg-s6z2">
-<button class="tablinks" onclick="openTab(event, '{motif_name}')">
+<td class="mtg-s6z2">
+<button class="tablinks" onclick="openTab(event, '{motif_name}'); $('.{motif_name}').trigger('content-change');">
 <a href="#{motif_name}">{motif}</a>
 </button>
 </td>
@@ -67,9 +68,9 @@ row_string_empty_old = """  <tr>
 row_string_empty = ""
 
 motif_summary = """
-<div class="tabcontent" id="{motif_name}">
+<div class="tabcontent" id="{motif_name}" style="display: none">
 <h2 id="summary">Summary table</h2>
-<table class="tg" id="{motif_tg}_tg">
+<table class="tg" id="tg-{motif_tg}">
     <thead>
         <tr>
             <th class="tg-s6z2" rowspan="2">Motif</th>
@@ -100,7 +101,7 @@ motif_summary = """
 
 <script>
     $(document).ready( function () {{
-    $('#{motif_tg}_tg').DataTable();
+    $('#tg-{motif_tg}').DataTable();
 }} );
 </script>
 <p><a href="#content">Back to content</a></p>
@@ -112,8 +113,16 @@ motif_string = """<h2 id="{motif_name}">{motif}</h2>
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<img class="pic60" alt="{motif_name} repetitions" src="{motif_reps}" />
-<img class="pic30" alt="{motif_name} pcolor" src="{motif_pcolor}" />
+<table>
+    <tr>
+        <td colspan="2">
+            <img class="pic100" alt="{motif_name} repetitions" src="{motif_reps}" />
+        </td>
+        <td colspan="1">
+            <img class="pic100" alt="{motif_name} pcolor" src="{motif_pcolor}" />
+        </td>
+    </tr>
+</table>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
@@ -123,13 +132,46 @@ motif_stringb64 = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<div class="row">
-<div class="pic60" id="plotly_{motif_name}"></div>
-<script>
-    Plotly.newPlot('plotly_{motif_name}', {motif_reps}, {{}});
-</script>
-<img class="pic30" alt="{motif_name} pcolor" src="data:image/png;base64,{motif_pcolor}" />
-</div>
+<table>
+    <tr>
+        <td colspan="2">
+            <div class="pic100 {motif_id}" id="hist-{motif_name}"></div>
+            <script>
+                {{
+                    let hist_data = {motif_reps};
+                    $(document).ready( function() {{
+                        $('.{motif_id}').bind("content-change", function() {{
+                            if (document.getElementById('{motif_id}').style.display === 'block') {{
+                                Plotly.react('hist-{motif_name}', hist_data, {{}});
+                            }}
+                            else {{
+                                Plotly.react('hist-{motif_name}', {{}}, {{}});
+                            }}
+                        }})
+                    }})
+                }}
+            </script>
+        </td>
+        <td colspan="1">
+            <div class="pic100 {motif_id}" id="pcol-{motif_name}"></div>
+            <script>
+                {{
+                    let pcol_data = {motif_pcolor};
+                    $(document).ready( function() {{
+                        $('.{motif_id}').bind("content-change", function() {{
+                            if (document.getElementById('{motif_id}').style.display === 'block') {{
+                                Plotly.react('pcol-{motif_name}', pcol_data, {{}});
+                            }}
+                            else {{
+                                Plotly.react('pcol-{motif_name}', {{}}, {{}});
+                            }}
+                        }})
+                    }})
+                }}
+            </script>
+        </td>
+    </tr>
+</table>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
@@ -139,7 +181,22 @@ motif_stringb64_reponly = """
 {sequence}<br>
 postfilter: bases {post_bases} , repetitions {post_reps} , max. errors {errors}<br>
 alleles: {result}<br>
-<img class="pic30" alt="{motif_name} repetitions" src="data:image/png;base64,{motif_reps}" />
+<div class="pic50 {motif_id}" id="hist2d-{motif_name}"></div>
+<script>
+    {{
+        let hist2d_data = {motif_reps};
+        $(document).ready( function() {{
+            $('.{motif_id}').bind("content-change", function() {{
+                if (document.getElementById('{motif_id}').style.display === 'block') {{
+                    Plotly.react('hist2d-{motif_name}', hist2d_data, {{}});
+                }}
+                else {{
+                    Plotly.react('hist2d-{motif_name}', {{}}, {{}});
+                }}
+            }})
+        }})
+    }}
+</script>
 {alignment}
 <p><a href="#content">Back to content</a></p>
 """
@@ -259,6 +316,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     sequence, subpart = highlight_subpart(sequence, highlight)
     motif = '%s &ndash; %s' % (motif_name, description)
     motif_name = '%s_%s' % (motif_name, ','.join(map(str, highlight)) if highlight is not None else 'mot')
+    motif_clean = re.sub(r'[^\w_\-]', '', motif_name)
     align_html_a1 = ''
     align_html_a2 = ''
     if confidence is None:
@@ -281,25 +339,30 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
 
     # return content and picture parts:
     if repetition is not None:
-        if postfilter['index_rep2'] != 'no':
-            reps = base64.b64encode(open(repetition, "rb").read())
-            reps = reps.decode("utf-8")
-        else:
-            reps = open(repetition, 'r').read()
+        # if postfilter['index_rep2'] != 'no':
+        #     reps = base64.b64encode(open(repetition, "rb").read())
+        #     reps = reps.decode("utf-8")
+        # else:
+        #     reps = open(repetition, 'r').read()
+
+        reps = open(repetition, 'r').read()
         align_html = generate_alignment(motif_name, alignment)
 
         if pcolor is not None:
-            pcol = base64.b64encode(open(pcolor, "rb").read())
-            pcol = pcol.decode("utf-8")
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
+            # pcol = base64.b64encode(open(pcolor, "rb").read())
+            # pcol = pcol.decode("utf-8")
+            pcol = open(pcolor, 'r').read()
+            return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
                    motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
-                                          motif_pcolor=pcol, alignment=align_html + align_html_a1 + align_html_a2,
+                                          motif_name=motif_clean, motif_id=motif_clean.split('_')[0], motif=motif,
+                                          motif_reps=reps, result=result, motif_pcolor=pcol,
+                                          alignment=align_html + align_html_a1 + align_html_a2,
                                           sequence=sequence, errors=errors)
         else:
-            return content_string.format(motif_name=motif_name.split('_')[0], motif=motif), \
+            return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
                    motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                  motif_name=motif_name, motif=motif, motif_reps=reps, result=result,
+                                                  motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
+                                                  motif=motif, motif_reps=reps, result=result,
                                                   alignment=align_html + align_html_a1 + align_html_a2,
                                                   sequence=sequence, errors=errors)
 
