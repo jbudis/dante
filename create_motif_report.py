@@ -80,7 +80,10 @@ def load_arguments():
     # add arguments
     parser.add_argument('input_dir', help='Path to directory with Dante reports')
     parser.add_argument('output_dir', help='Path to directory where the output will be stored', nargs='?',
-                        default='example/motif_report')
+                          default='example/motif_report')
+    parser.add_argument('--report_every', type=int, help='Specify how often a progress message should be printed (default=5)',
+                        default=5)
+    parser.add_argument('-q', '--quiet', help="Don't print any progress messages", action='store_true')
 
     args = parser.parse_args()
 
@@ -151,7 +154,7 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist, bgs):
                               motifs_content=table, motif_plots=plots))
 
 
-def create_reports(input_dir, output_dir):
+def create_reports(input_dir, output_dir, arg_list):
     os.makedirs(output_dir, exist_ok=True)
     paths = []
 
@@ -164,10 +167,17 @@ def create_reports(input_dir, output_dir):
     motifs = {}
 
     if len(paths) == 0:
-        print("Error: input directory is empty")
+        print("ERROR\tInput directory is empty")
         return
 
+    cnt = 1
+    print("INFO\tParsing reports")
+
     for path in paths:
+        if not arg_list.quiet and cnt % arg_list.report_every == 0:
+            print("INFO\tParsing file\t%d/%d" % (cnt, len(paths)))
+        cnt += 1
+
         file = BeautifulSoup(open(path, 'r'), 'html.parser')
         fname = path.split('/')[-1].split('.')[0]
 
@@ -193,6 +203,8 @@ def create_reports(input_dir, output_dir):
                         motifs[name] = [doc]
                     else:
                         motifs[name].append(doc)
+
+    print("INFO\tGenerating motif reports")
 
     # create histogram of read counts
     for _key in motifs.keys():
@@ -287,4 +299,4 @@ def create_reports(input_dir, output_dir):
 
 if __name__ == '__main__':
     input_d, output_d, args = load_arguments()
-    create_reports(input_d, output_d)
+    create_reports(input_d, output_d, args)
