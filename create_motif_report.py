@@ -52,6 +52,7 @@ row_string = """  <tr>
 
 plot_string = """
 <h2 id="map">Allele heatmap</h2>
+<p><b>Number of background results: {background}</b></p>
 <div id="motif-heatmap"></div>
 <script>
     Plotly.newPlot('motif-heatmap', {heatmap}, {{}});
@@ -109,8 +110,10 @@ def generate_row(motif_name, a1, c1, a2, c2, c, reads_blue, reads_grey):
 
 # Convert extracted numbers from table to ints and set background and expanded alleles to 0
 def parse_alleles(num):
-    if num == 'B' or num == 'E' or num == '---':
-        return 0
+    if num == 'B' or num == 'E':
+        return num
+    elif num == '---':
+        return -1
     else:
         return int(num)
 
@@ -122,7 +125,7 @@ def parse_label(num):
         return str(int(num))
 
 
-def generate_motif_report(path, key, samples, fig_heatmap, fig_hist):
+def generate_motif_report(path, key, samples, fig_heatmap, fig_hist, bgs):
     """
     Generate report file for one motif
     :param path: str - path to output dir
@@ -130,6 +133,7 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist):
     :param samples: list - list of samples of selected motif
     :param fig_heatmap: str - heatmap object
     :param fig_hist: str - histogram object
+    :param bgs: int - number of background results
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     template = open('%s/report/motif_report.html' % script_dir, 'r').read()
@@ -142,7 +146,7 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist):
 
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
-        plots = plot_string.format(heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
+        plots = plot_string.format(background=bgs, heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
         f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
                               motifs_content=table, motif_plots=plots))
 
@@ -178,6 +182,9 @@ def create_reports(input_dir, output_dir):
 
                 if len(columns) >= 9:
                     name = columns[0].text.strip() + '_' + columns[1].text.strip()
+                    if ',' in name:
+                        break
+
                     doc = [fname, columns[2].text.strip(), columns[3].text.strip().replace('%', ''),
                            columns[4].text.strip(), columns[5].text.strip().replace('%', ''),
                            columns[6].text.strip().replace('%', ''), columns[7].text.strip(), columns[8].text.strip()]
@@ -189,23 +196,46 @@ def create_reports(input_dir, output_dir):
 
     # create histogram of read counts
     for _key in motifs.keys():
-        a1 = [parse_alleles(row[1]) for row in motifs[_key]]
-        a2 = [parse_alleles(row[3]) for row in motifs[_key]]
+        a1 = [parse_alleles(row[1]) for row in motifs[_key] if parse_alleles(row[1]) != -1]
+        a2 = [parse_alleles(row[3]) for row in motifs[_key] if parse_alleles(row[3]) != -1]
 
-        arr = np.zeros((max(a1) + 1, max(a2) + 1))
+        if len(a1) == 0 or len(a2) == 0:
+            continue
 
-        max_count = max(max(a1), max(a2))
-        hist_arr = [0 for _ in range(max_count + 1)]
+        a1_max = max(x for x in a1 if isinstance(x, int))
+        a2_max = max(x for x in a2 if isinstance(x, int))
+
+        arr = np.zeros((a1_max + 2, a2_max + 2))
+
+        max_count = max(a1_max, a2_max)
+        hist_arr = [0 for _ in range(max_count + 2)]
+        hist_color = ['#636EFA' for _ in range(max_count + 1)] + ['#EF553B']
+
+        bgs = 0
 
         for i in range(len(a1)):
-            arr[a1[i], a2[i]] += 1
-            hist_arr[a1[i]] += 1
-            hist_arr[a2[i]] += 1
+            if a2[i] == 'E':
+                if a1[i] == 'E':
+                    arr[a1_max + 1, a2_max + 1] += 1
+                else:
+                    arr[a1[i], a2_max + 1] += 1
+                hist_arr[-1] += 1
+            elif a2[i] == 'B':
+                bgs += 1
+            elif a2[i] == '---':
+                pass
+            else:
+                arr[a1[i], a2[i]] += 1
+                hist_arr[a1[i]] += 1
+                hist_arr[a2[i]] += 1
 
         fig_histogram = go.Figure(data=[
-            go.Bar(y=hist_arr, text=[parse_label(num) for num in hist_arr], name='Count histogram'),
+            go.Bar(y=hist_arr, text=[parse_label(num) for num in hist_arr], name='Count histogram', marker_color=hist_color),
         ])
-        fig_histogram.update_xaxes(title_text="Prediction")
+        #fig_histogram.add_vline(x=len(hist_arr) - 1.5, line_width=5, line_color='black', opacity=1)
+        fig_histogram.update_xaxes(title_text="Prediction", tickmode='array',
+                                   tickvals=np.concatenate([np.array(range(0, max_count + 1, 5)), [max_count + 1]]),
+                                   ticktext=list(range(0, max_count + 1, 5)) + ['E(>%d)' % (max_count + 1)])
         fig_histogram.update_yaxes(title_text="Count")
         fig_histogram.update_traces(hovertemplate="<b>Prediction:\t%{x}</b><br />Count:\t%{y}<br />", textfont_size=7)
         fig_histogram.update_layout(width=1000, height=500, template='simple_white',
@@ -239,14 +269,20 @@ def create_reports(input_dir, output_dir):
                        hovertemplate="<b>Allele 1:\t%{y}<br />Allele 2:\t%{x}</b><br />Count:\t%{text}",
                        texttemplate="%{text}", name='Prediction heatmap')
         ])
+        fig_heatmap.add_vline(x=a2_max + 0.5, line_width=5, line_color='black', opacity=1)
+        fig_heatmap.add_hline(y=a1_max + 0.5, line_width=5, line_color='black', opacity=1)
         fig_heatmap.update_layout(width=750, height=750, template='simple_white',
-                                  yaxis=dict(range=[row_count-0.5, row_max-0.5]),
-                                  xaxis=dict(range=[column_count-0.5, column_max-0.5]))
-        fig_heatmap.update_yaxes(title_text="Allele 1")
-        fig_heatmap.update_xaxes(title_text="Allele 2")
+                                  yaxis=dict(range=[row_count-1.5, row_max-0.5]),
+                                  xaxis=dict(range=[column_count-1.5, column_max-0.5]))
+        fig_heatmap.update_yaxes(title_text="Allele 1", tickmode='array',
+                                 tickvals=np.concatenate([np.array(range(0, row_max - 1, 5)), [row_max - 1]]),
+                                 ticktext=list(range(0, row_max - 1, 5)) + ['E(>%d)' % (row_max - 1)])
+        fig_heatmap.update_xaxes(title_text="Allele 2", tickmode='array',
+                                 tickvals=np.concatenate([np.array(range(0, column_max - 1, 5)), [column_max - 1]]),
+                                 ticktext=list(range(0, column_max - 1, 5)) + ['E(>%d)' % (column_max - 1)])
 
         # generate motif
-        generate_motif_report(output_dir, _key, motifs[_key], fig_heatmap, fig_histogram)
+        generate_motif_report(output_dir, _key, motifs[_key], fig_heatmap, fig_histogram, bgs)
 
 
 if __name__ == '__main__':
