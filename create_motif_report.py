@@ -138,7 +138,8 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist, bgs):
     :param fig_hist: str - histogram object
     :param bgs: int - number of background results
     """
-    template = open('report/motif_report.html', 'r').read()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    template = open('%s/report/motif_report.html' % script_dir, 'r').read()
     rows = []
     key = key.replace('/', '-')
 
@@ -189,7 +190,7 @@ def create_reports(input_dir, output_dir, arg_list):
                 if columns == [] or columns[0].text.strip() == 'prediction':
                     continue
 
-                if columns:
+                if len(columns) >= 9:
                     name = columns[0].text.strip() + '_' + columns[1].text.strip()
                     if ',' in name:
                         break
