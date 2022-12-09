@@ -179,7 +179,7 @@ def create_reports(input_dir, output_dir, arg_list):
         cnt += 1
 
         file = BeautifulSoup(open(path, 'r'), 'html.parser')
-        fname = path.split('/')[-1].split('.')[0]
+        sample = file.find(id='sample_name').text.strip()
 
         # find table of class 'tg' and extract all rows from it
         for cl in file.find_all(class_='tg'):
@@ -195,7 +195,7 @@ def create_reports(input_dir, output_dir, arg_list):
                     if ',' in name:
                         break
 
-                    doc = [fname, columns[2].text.strip(), columns[3].text.strip().replace('%', ''),
+                    doc = [sample, columns[2].text.strip(), columns[3].text.strip().replace('%', ''),
                            columns[4].text.strip(), columns[5].text.strip().replace('%', ''),
                            columns[6].text.strip().replace('%', ''), columns[7].text.strip(), columns[8].text.strip()]
 
@@ -214,8 +214,15 @@ def create_reports(input_dir, output_dir, arg_list):
         if len(a1) == 0 or len(a2) == 0:
             continue
 
-        a1_max = max(x for x in a1 if isinstance(x, int))
-        a2_max = max(x for x in a2 if isinstance(x, int))
+        try:
+            a1_max = max(x for x in a1 if isinstance(x, int))
+        except ValueError:
+            a1_max = 0
+
+        try:
+            a2_max = max(x for x in a2 if isinstance(x, int))
+        except ValueError:
+            a2_max = 0
 
         arr = np.zeros((a1_max + 2, a2_max + 2))
 

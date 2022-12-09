@@ -399,8 +399,9 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     dist_filt_text = [parse_labels(df, d) for df, d in zip(dist_filt, dist)]
 
     fig = go.Figure()
-    fig.add_bar(y=dist_filt, text=dist_filt_text, marker_color='rgb(204, 204, 204)', name='Filtered repetitions')
-    fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Repetitions')
+    fig.add_bar(y=dist_filt, text=dist_filt_text, name='Partial reads',
+                marker_color='rgb(204, 204, 204)', textfont_color='rgb(204, 204, 204)')
+    fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Full reads ')
 
     fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
     fig.update_layout(width=800, height=450,
@@ -410,7 +411,9 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
                       template='simple_white',
                       barmode='overlay')
     fig.update_yaxes(title_text="Read counts")
-    fig.update_xaxes(title_text="STR repetitions")
+    fig.update_xaxes(title_text="STR repetitions", tickmode='array',
+                     tickvals=list(range(5, len(dist), 5)),
+                     ticktext=list(range(5, len(dist), 5)))
 
     with open(out_prefix + '.json', 'w') as f:
         f.write(fig.to_json())
@@ -450,9 +453,11 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
             write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations + filt_primer, index_rep - 1, index_rep2 - 1,
                                     motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
             write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1, index_rep2 - 1)
+            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filtered_annotations, index_rep - 1, index_rep2 - 1)
         else:
             write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
             write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1)
+            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filtered_annotations, index_rep - 1)
 
     if not quiet or len(quality_annotations) > 0:
         write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
@@ -598,12 +603,13 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     return result_table
 
 
-def write_report(report_dir, motifs, output_dir, quiet=False):
+def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
     """
     Generate and write a report.
     :param report_dir: str - dir name for reports
     :param motifs: dict - parameters of motifs
     :param output_dir: str - output directory for searching of all_call outputs
+    :param input_path: str - path to the first input file
     :param quiet: boolean - less files on the output?
     :return: None
     """
@@ -638,6 +644,9 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
                 align_file = '%s/%s/alignment_%d.fasta' % (output_dir, motif_name, i + 1)
                 if not os.path.exists(align_file):
                     align_file = None
+                filt_align_file = '%s/%s/alignment_filtered_%d.fasta' % (output_dir, motif_name, i + 1)
+                if not os.path.exists(filt_align_file):
+                    filt_align_file = None
                 confidence = read_all_call('%s/%s/allcall_%d.txt' % (output_dir, motif_name, i + 1))
 
                 # get number of reads:
@@ -658,7 +667,7 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
                 if not quiet:
-                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, confidence, postfilter, highlight=highlight)
+                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight)
                     if motif_name in mcs:
                         ms[motif_name].append(m)
                     else:
@@ -679,6 +688,10 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
     # save the report file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     template = open('%s/report.html' % script_dir, 'r').read()
+
+    filename = os.path.basename(input_path)
+    filename = filename.split('.')[0]
+    template = custom_format(template, sample=filename)
     tabs = []
 
     with open('%s/report.html' % report_dir, 'w') as f:
