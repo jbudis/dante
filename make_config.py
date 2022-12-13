@@ -82,7 +82,7 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
     parser.add_argument('-r', help='Remove current motifs in YAML configuration file', action='store_true')
     parser.add_argument('--quiet', help='Does not print errors and warning messages', action='store_true')
     parser.add_argument('--postfilter', help='Options to add to postfilter, for example "max_errors: 0.2" for 20% of errors allowed')
-    parser.add_argument('--no-prefilter', help='Removes prefilter completely', action='store_true')
+    parser.add_argument('--prefilter', help='Applies prefilter, default is to not use prefilter for BAM inputs', action='store_true')
     parser.add_argument('--nomenclature-column', help='Name of the column for nomenclature (default=nomenclature)', default='nomenclature')
     parser.add_argument('--skip-check', help='Skip checks for the repetition parts. Good if you need to supply non-perfect nomenclatures.', action='store_true')
 
@@ -640,7 +640,7 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, chromosome, start
 
     motif['modules'] = modules
 
-    motif['prefilter'], motif['postfilter'] = make_filters(modules, args.min_flank_post, args.min_flank_post_complex, args.min_rep_post, args.no_prefilter)
+    motif['prefilter'], motif['postfilter'] = make_filters(modules, args.min_flank_post, args.min_flank_post_complex, args.min_rep_post, not args.prefilter)
 
     if args.min_mapq is not None:
         motif['min_mapq'] = args.min_mapq
