@@ -1,6 +1,8 @@
 import os
 import argparse
+import re
 import textwrap
+from itertools import chain
 
 import numpy as np
 import plotly.graph_objects as go
@@ -50,7 +52,7 @@ row_string = """  <tr>
   </tr>
 """
 
-plot_string = """
+summary_plot_string = """
 <h2 id="map">Allele heatmap</h2>
 <p><b>Number of background results: {background}</b></p>
 <div id="motif-heatmap"></div>
@@ -62,6 +64,52 @@ plot_string = """
 <script>
     Plotly.newPlot('motif-hist', {histogram}, {{}});
 </script>
+"""
+
+motif_plot_string = """<h3>{sample_name}</h3>
+<table>
+    <tr>
+        <td colspan="2">
+            <div class="hist pic100" id="hist-{sample_id}"></div>
+            <script>
+                Plotly.react('hist-{sample_id}', {hist_plot}, {{}});
+            </script>
+        </td>
+        <td colspan="1">
+            <div class="pcol pic100" id="pcol-{sample_id}"></div>
+            <script>
+                Plotly.react('pcol-{sample_id}', {pcol_plot}, {{}});
+            </script>
+        </td>
+    </tr>
+</table>
+"""
+
+align_string = """
+  <details>
+    <summary>{display_text}</summary>
+    <div id="align-{sample_id}" class="align">press "Run with JS"</div>
+    <script>
+        let fasta = {fasta};
+        let seqs = msa.io.fasta.parse(fasta);
+        let opts = {{
+            el: document.getElementById("align-{sample_id}"),
+            vis: {{
+                conserv: false,
+                metaIdentity: true,
+                overviewbox: true,
+                seqlogo: true
+            }},
+            seqs: seqs,
+            colorscheme: {{"scheme": "nucleotide"}},
+            // smaller menu for JSBin
+            menu: "small",
+            bootstrapMenu: true
+        }};
+        let m = new msa.msa(opts);
+        m.render()
+    </script>
+  </details>
 """
 
 
@@ -128,12 +176,14 @@ def parse_label(num):
         return str(int(num))
 
 
-def generate_motif_report(path, key, samples, fig_heatmap, fig_hist, bgs):
+def generate_motif_report(path, key, samples, plots, alignments, fig_heatmap, fig_hist, bgs):
     """
     Generate report file for one motif
     :param path: str - path to output dir
     :param key: str - motif name
     :param samples: list - list of samples of selected motif
+    :param plots: list - list of plots of selected motif
+    :param alignments: list - list of alignments of selected motif
     :param fig_heatmap: str - heatmap object
     :param fig_hist: str - histogram object
     :param bgs: int - number of background results
@@ -147,24 +197,36 @@ def generate_motif_report(path, key, samples, fig_heatmap, fig_hist, bgs):
         rows.append(generate_row(sample[0], sample[1], sample[2], sample[3],
                                  sample[4], sample[5], sample[6], sample[7]))
 
+    motif_plots = list(chain.from_iterable(zip(plots, alignments)))
+
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
-        plots = plot_string.format(background=bgs, heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
+        summary_plots = summary_plot_string.format(background=bgs, heatmap=to_json(fig_heatmap), histogram=to_json(fig_hist))
         f.write(custom_format(template, motif=key.split('_')[0], seq=key.split('_')[1],
-                              motifs_content=table, motif_plots=plots))
+                              motifs_content=table, summary_plots=summary_plots, motif_plots='\n'.join(motif_plots)))
 
 
 def create_reports(input_dir, output_dir, arg_list):
+    """
+    Traverse input dir, collect all tables and plots from reports and generate motif reports
+    :param input_dir: str - path to input dir
+    :param output_dir: str - path to output dir
+    :param arg_list: [any] - list of arguments
+    """
     os.makedirs(output_dir, exist_ok=True)
     paths = []
 
     # find all report files in root directory
     for root, dirs, files in os.walk(input_dir):
         for file in files:
-            if file.endswith('.html'):
+            if file.endswith('.html') and 'static' not in file:
                 paths.append(os.path.join(root, file))
 
     motifs = {}
+    plots = {}
+    alignments = {}
+    current_alignment = []
+    prev_name = ''
 
     if len(paths) == 0:
         print("ERROR\tInput directory is empty")
@@ -203,6 +265,69 @@ def create_reports(input_dir, output_dir, arg_list):
                         motifs[name] = [doc]
                     else:
                         motifs[name].append(doc)
+
+        for cl in file.find_all(class_='plots'):
+            name = cl.find(class_='hist')['class'][-1]
+            hist = cl.find(class_='hist').find_next('script').text
+            pcol = cl.find(class_='pcol')
+
+            if pcol:
+                pcol = pcol.find_next('script').text
+
+            prev = cl.find_previous('p').find_all('u')
+
+            if len(prev) > 1:
+                continue
+
+            hist_data = re.match(r"[\w\W]+let hist_data = ({.+});[\w\W]+", hist).group(1)
+            pcol_data = re.match(r"[\w\W]+let pcol_data = ({.+});[\w\W]+", pcol).group(1)
+
+            name += '_' + prev[0].text
+            temp = motif_plot_string.format(sample_name=sample, sample_id=name + '_' + sample,
+                                            hist_plot=hist_data, pcol_plot=pcol_data)
+
+            if name not in plots:
+                plots[name] = [temp]
+            else:
+                plots[name].append(temp)
+
+        for cl in file.find_all(class_='align'):
+            name = cl['class'][-1]
+            msa = cl.find_next('script').text
+            prev = cl.find_previous('p').find_all('u')
+            disp = cl.find_previous('summary').text
+
+            if len(prev) > 1:
+                continue
+
+            msa_data = re.match(r"[\w\W]+let \w+_fasta = (`[\w\W]+`);[\w\W]+", msa).group(1)
+
+            name += '_' + prev[0].text
+            if prev_name == '':
+                prev_name = name
+
+            temp = align_string.format(sample_name=sample, sample_id=cl['id'] + sample,
+                                       fasta=msa_data, display_text=disp)
+
+            if prev_name == name:
+                current_alignment.append(temp)
+            else:
+                if prev_name not in alignments:
+                    alignments[prev_name] = ['\n'.join(current_alignment)]
+                else:
+                    alignments[prev_name].append('\n'.join(current_alignment))
+
+                current_alignment = [temp]
+                prev_name = name
+
+        if len(current_alignment) != 0:
+            alignments[prev_name] = ['\n'.join(current_alignment)]
+        else:
+            alignments[prev_name].append('\n'.join(current_alignment))
+
+        current_alignment = []
+        prev_name = ''
+
 
     print("INFO\tGenerating motif reports")
 
@@ -301,7 +426,7 @@ def create_reports(input_dir, output_dir, arg_list):
                                  ticktext=list(range(0, column_max - 1, 5)) + ['E(>%d)' % (column_max - 1)])
 
         # generate motif
-        generate_motif_report(output_dir, _key, motifs[_key], fig_heatmap, fig_histogram, bgs)
+        generate_motif_report(output_dir, _key, motifs[_key], plots[_key], alignments[_key], fig_heatmap, fig_histogram, bgs)
 
 
 if __name__ == '__main__':

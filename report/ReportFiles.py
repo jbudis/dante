@@ -453,11 +453,11 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
             write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations + filt_primer, index_rep - 1, index_rep2 - 1,
                                     motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
             write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1, index_rep2 - 1)
-            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filtered_annotations, index_rep - 1, index_rep2 - 1)
+            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filt_primer, index_rep - 1, index_rep2 - 1)
         else:
             write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
             write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1)
-            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filtered_annotations, index_rep - 1)
+            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filt_primer, index_rep - 1)
 
     if not quiet or len(quality_annotations) > 0:
         write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
@@ -625,6 +625,9 @@ def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
     mcs = {}
     ms = {}
     rows = {}
+    mcs_static = []
+    ms_static = []
+    rows_static = []
 
     with open(all_profiles, 'w') as pf, open(all_true, 'w') as tf:
         for m in motifs:
@@ -663,6 +666,8 @@ def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
                 else:
                     rows[motif_name] = [row]
 
+                rows_static.append(row)
+
                 # add to csv table:
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
@@ -673,6 +678,11 @@ def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
                     else:
                         mcs[motif_name] = mc
                         ms[motif_name] = [m]
+
+                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, static=True)
+                    if mc not in mcs_static:
+                        mcs_static.append(mc)
+                    ms_static.append(m)
 
                     # add to profiles
                     if postfilter['index_rep2'] == 'no':
@@ -688,23 +698,30 @@ def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
     # save the report file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     template = open('%s/report.html' % script_dir, 'r').read()
+    template_static = open('%s/report.html' % script_dir, 'r').read()
 
-    filename = os.path.basename(input_path)
-    filename = filename.split('.')[0]
-    template = custom_format(template, sample=filename)
+    template = custom_format(template, sample=output_dir)
+    template_static = custom_format(template_static, sample=output_dir)
     tabs = []
 
     with open('%s/report.html' % report_dir, 'w') as f:
         # f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
         contents_table = report.html_templates.contents.format(table='\n'.join(sorted(mcs.values())))
-        template = custom_format(template, motifs_content=contents_table)
+        template = custom_format(template, motifs_content=contents_table + '\n' + report.html_templates.make_datatable_string)
 
         for motif in sorted(motifs, key=lambda x: x['full_name']):
             m = motif['full_name']
             motif_clean = re.sub(r'[^\w_\-]', '', m)
-            tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean, motif_tgf=motif_clean, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
+            tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
 
-        f.write(custom_format(template, motifs='\n'.join(tabs)))
+        f.write(custom_format(template, table='', motifs='\n'.join(tabs)))
+
+    with open('%s/report_static.html' % report_dir, 'w') as f:
+        contents_table = report.html_templates.contents.format(table='\n'.join(mcs_static))
+        table = report.html_templates.motif_summary_static.format(table='\n'.join(rows_static))
+
+        f.write(custom_format(template_static, motifs_content=contents_table,
+                              table=table, motifs='\n'.join(ms_static)))
 
     # copy javascript libraries
     if not quiet:

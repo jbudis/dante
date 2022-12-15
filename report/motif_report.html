@@ -5,6 +5,9 @@
     <title>Dante motif report</title>
     <link rel="stylesheet" type="text/css" href="https://www.w3schools.com/w3css/4/w3.css">
 
+    <script type="text/javascript" src="msa.min.gz.js"></script>
+    <script type="text/javascript" src="https://gen-clc.cusp.uniba.sk/dante/msa.min.gz.js"></script>
+
     <script type="text/javascript" src="plotly-2.14.0.min.js"></script>
     <script type="text/javascript" src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
 
@@ -48,6 +51,16 @@
         .tg .tg-s6z2 {
             text-align: center
         }
+
+        .pic100 {
+            width: 100%;
+            height: auto;
+        }
+
+        .pic50 {
+            width: 50%;
+            height: auto;
+        }
     </style>
 </head>
 <body class="valo v-app">
@@ -58,6 +71,11 @@
 <div class="motif-tg">
     {motifs_content}
 </div>
+
+{summary_plots}
+<p><a href="#name">Back to top</a></p>
+
+<h2>Motif plots</h2>
 {motif_plots}
 <p><a href="#name">Back to top</a></p>
 </body>
