@@ -90,9 +90,9 @@ align_string = """
     <summary>{display_text}</summary>
     <div id="align-{sample_id}" class="align">press "Run with JS"</div>
     <script>
-        let fasta = {fasta};
-        let seqs = msa.io.fasta.parse(fasta);
-        let opts = {{
+        var fasta = {fasta};
+        var seqs = msa.io.fasta.parse(fasta);
+        var opts = {{
             el: document.getElementById("align-{sample_id}"),
             vis: {{
                 conserv: false,
@@ -106,7 +106,7 @@ align_string = """
             menu: "small",
             bootstrapMenu: true
         }};
-        let m = new msa.msa(opts);
+        var m = new msa.msa(opts);
         m.render()
     </script>
   </details>
@@ -253,7 +253,7 @@ def create_reports(input_dir, output_dir, arg_list):
                     continue
 
                 if len(columns) >= 9:
-                    name = columns[0].text.strip() + '_' + columns[1].text.strip()
+                    name = re.sub(r'[^\w_]', '', columns[0].text.strip()) + '_' + columns[1].text.strip()
                     if ',' in name:
                         break
 
@@ -300,7 +300,7 @@ def create_reports(input_dir, output_dir, arg_list):
             if len(prev) > 1:
                 continue
 
-            msa_data = re.match(r"[\w\W]+let \w+_fasta = (`[\w\W]+`);[\w\W]+", msa).group(1)
+            msa_data = re.match(r"[\w\W]+let \w+_fasta = (`[\w\W]*`);[\w\W]+", msa).group(1)
 
             name += '_' + prev[0].text
             if prev_name == '':

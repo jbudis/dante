@@ -603,13 +603,12 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     return result_table
 
 
-def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
+def write_report(report_dir, motifs, output_dir, quiet=False):
     """
     Generate and write a report.
     :param report_dir: str - dir name for reports
     :param motifs: dict - parameters of motifs
     :param output_dir: str - output directory for searching of all_call outputs
-    :param input_path: str - path to the first input file
     :param quiet: boolean - less files on the output?
     :return: None
     """
@@ -700,8 +699,10 @@ def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
     template = open('%s/report.html' % script_dir, 'r').read()
     template_static = open('%s/report.html' % script_dir, 'r').read()
 
-    template = custom_format(template, sample=output_dir)
-    template_static = custom_format(template_static, sample=output_dir)
+    sample = os.path.basename(output_dir)
+
+    template = custom_format(template, sample=sample)
+    template_static = custom_format(template_static, sample=sample)
     tabs = []
 
     with open('%s/report.html' % report_dir, 'w') as f:
@@ -711,7 +712,7 @@ def write_report(report_dir, motifs, output_dir, input_path, quiet=False):
 
         for motif in sorted(motifs, key=lambda x: x['full_name']):
             m = motif['full_name']
-            motif_clean = re.sub(r'[^\w_\-]', '', m)
+            motif_clean = re.sub(r'[^\w_]', '', m)
             tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
 
         f.write(custom_format(template, table='', motifs='\n'.join(tabs)))
