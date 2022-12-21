@@ -243,8 +243,11 @@ class ReadFile:
             try:
                 region = bam.fetch(chromosome, pos_start, pos_end)
             except ValueError:
-                print(f"Detected BAM file {file_name} without index, please sort and index with 'samtools sort' and 'samtools index'.")
-                sys.exit()
+                try:
+                    region = bam.fetch(chromosome[3:], pos_start, pos_end)
+                except ValueError:
+                    print(f"Detected BAM file {file_name} without index, please sort and index with 'samtools sort' and 'samtools index'.")
+                    sys.exit()
         else:
             region = bam
 
