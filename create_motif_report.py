@@ -219,7 +219,7 @@ def create_reports(input_dir, output_dir, arg_list):
     # find all report files in root directory
     for root, dirs, files in os.walk(input_dir):
         for file in files:
-            if file.endswith('.html') and 'static' not in file:
+            if file == 'report.html':
                 paths.append(os.path.join(root, file))
 
     motifs = {}
@@ -279,8 +279,14 @@ def create_reports(input_dir, output_dir, arg_list):
             if len(prev) > 1:
                 continue
 
-            hist_data = re.match(r"[\w\W]+let hist_data = ({.+});[\w\W]+", hist).group(1)
-            pcol_data = re.match(r"[\w\W]+let pcol_data = ({.+});[\w\W]+", pcol).group(1)
+            hist_data_re = re.match(r"[\w\W]+let hist_data = ({.+});[\w\W]+", hist)
+            if hist_data_re is None:
+                continue
+            hist_data = hist_data_re.group(1)
+            pcol_data_re = re.match(r"[\w\W]+let pcol_data = ({.+});[\w\W]+", pcol)
+            if pcol_data_re is None:
+                continue
+            pcol_data = pcol_data_re.group(1)
 
             name += '_' + prev[0].text
             temp = motif_plot_string.format(sample_name=sample, sample_id=name + '_' + sample,
