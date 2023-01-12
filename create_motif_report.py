@@ -8,6 +8,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.io import to_json
 from bs4 import BeautifulSoup
+from natsort import natsorted
 
 motif_summary = """
 <h2 id="summary">Summary table</h2>
@@ -35,7 +36,13 @@ motif_summary = """
 </table>
 <script>
     $(document).ready( function () {{
-    $('#tg').DataTable();
+    $('#tg').DataTable( {{
+        'order': [],
+        dom: 'Bfrtip',
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ]
+    }} );
 }} );
 </script>
 """
@@ -235,7 +242,7 @@ def create_reports(input_dir, output_dir, arg_list):
     cnt = 1
     print("INFO\tParsing reports")
 
-    for path in paths:
+    for path in natsorted(paths):
         if not arg_list.quiet and cnt % arg_list.report_every == 0:
             print("INFO\tParsing file\t%d/%d" % (cnt, len(paths)))
         cnt += 1
@@ -327,9 +334,10 @@ def create_reports(input_dir, output_dir, arg_list):
                 prev_name = name
 
         if len(current_alignment) != 0:
-            alignments[prev_name] = ['\n'.join(current_alignment)]
-        else:
-            alignments[prev_name].append('\n'.join(current_alignment))
+            if prev_name not in alignments:
+                alignments[prev_name] = ['\n'.join(current_alignment)]
+            else:
+                alignments[prev_name].append('\n'.join(current_alignment))
 
         current_alignment = []
         prev_name = ''

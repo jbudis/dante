@@ -26,13 +26,13 @@ Furthermore, if you need to use the config converter program `make_config.py`, y
 pip install ensembl_rest==0.3.3
 ```
 
-If you want to use `create_motif_report.py` script to aggregate reports by motif, you will need to install additional `beautifulsoup4` dependency:
+(To do this on some very old systems, you need to install openssl to your conda environment with `conda install -c conda-forge openssl==3.0.5`.)
+
+If you want to use `create_motif_report.py` script to aggregate reports by motif, you will need to install additional `beautifulsoup4` and `natsort` dependencies:
 
 ```bash
-conda install beautifulsoup4
+conda install beautifulsoup4 natsort
 ```
-
-(To do this on some very old systems, you need to install openssl to your conda environment with `conda install -c conda-forge openssl==3.0.5`.)
 
 ### Example dataset
 
