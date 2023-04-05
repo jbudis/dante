@@ -431,8 +431,8 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     :param sequence: str - motif sequence
     :param repetition: str - filename of repetitions figures
     :param pcolor: str - filename of pcolor figures
-    :param alignment: str - filename of alignment file
-    :param filtered_alignment: str - filename of filtered alignment file
+    :param alignment: str/None - filename of alignment file
+    :param filtered_alignment: str/None - filename of filtered alignment file
     :param confidence: tuple - motif confidences and allele predictions
     :param postfilter: dict - postfilter dict from config
     :param highlight: list(int)/None - which part of seq to highlight
@@ -453,25 +453,26 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             result = 'BG %5.1f%%' % (c * 100)
         else:
             result = '%2s (%5.1f%%) %2s (%5.1f%%) total %5.1f%%' % (str(a1), c1 * 100, str(a2), c2 * 100, c * 100)
-            align_prefix = alignment[:alignment.rfind('.')]
+            if alignment is not None:
+                align_prefix = alignment[:alignment.rfind('.')]
 
-            if static:
-                align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
-                                                   '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
-                                                   "Allele 1 (%2s) alignment visualization" % str(a1), static=True)
-                if a1 != a2:
-                    align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
-                                                       '%s_a%s.fasta' % (align_prefix, str(a2)),
-                                                       motif_clean.split('_')[0],
-                                                       "Allele 2 (%2s) alignment visualization" % str(a2), static=True)
-            else:
-                align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
-                                                   '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
-                                                   "Allele 1 (%2s) alignment visualization" % str(a1))
-                if a1 != a2:
-                    align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
-                                                       '%s_a%s.fasta' % (align_prefix, str(a2)), motif_clean.split('_')[0],
-                                                       "Allele 2 (%2s) alignment visualization" % str(a2))
+                if static:
+                    align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
+                                                       '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
+                                                       "Allele 1 (%2s) alignment visualization" % str(a1), static=True)
+                    if a1 != a2:
+                        align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
+                                                           '%s_a%s.fasta' % (align_prefix, str(a2)),
+                                                           motif_clean.split('_')[0],
+                                                           "Allele 2 (%2s) alignment visualization" % str(a2), static=True)
+                else:
+                    align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
+                                                       '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
+                                                       "Allele 1 (%2s) alignment visualization" % str(a1))
+                    if a1 != a2:
+                        align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
+                                                           '%s_a%s.fasta' % (align_prefix, str(a2)), motif_clean.split('_')[0],
+                                                           "Allele 2 (%2s) alignment visualization" % str(a2))
 
     # errors:
     errors = postfilter['max_errors']
@@ -488,9 +489,9 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             #     reps = open(repetition, 'r').read()
 
             reps = open(repetition, 'r').read()
-            align_html = generate_alignment(motif_clean, alignment, motif_clean.split('_')[0], static=True)
-            filt_align_html = generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
-                                                 'Partial reads alignment visualization', static=True)
+            align_html = '' if alignment is None else generate_alignment(motif_clean, alignment, motif_clean.split('_')[0], static=True)
+            filt_align_html = '' if filtered_alignment is None else generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
+                                                                                       'Partial reads alignment visualization', static=True)
 
             if pcolor is not None:
                 # pcol = base64.b64encode(open(pcolor, "rb").read())

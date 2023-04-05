@@ -15,9 +15,9 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installation
 
-Dante is developed and tested on Python 3.7 with libraries determined in the `conda_env.yaml`. Create the conda environment as following:
+Dante is developed and tested on Python 3.7 with libraries determined in the `conda_env.yaml`. Create the conda environment as following (although 'conda' works, it is slow, and we recommend to use 'mamba'):
 ```bash
-conda env create -n dante -f conda_env.yaml
+mamba env create -n dante -f conda_env.yaml
 ```
 
 Furthermore, if you need to use the config converter program `make_config.py`, you need to additionally install `ensembl_rest` python package (not available directly through conda):
@@ -26,12 +26,12 @@ Furthermore, if you need to use the config converter program `make_config.py`, y
 pip install ensembl_rest==0.3.3
 ```
 
-(To do this on some very old systems, you need to install openssl to your conda environment with `conda install -c conda-forge openssl==3.0.5`.)
+(To do this on some very old systems, you need to install openssl to your conda environment with `mamba install -c conda-forge openssl==3.0.5`.)
 
 If you want to use `create_motif_report.py` script to aggregate reports by motif, you will need to install additional `beautifulsoup4` and `natsort` dependencies:
 
 ```bash
-conda install beautifulsoup4 natsort
+mamba install beautifulsoup4 natsort
 ```
 
 ### Example dataset

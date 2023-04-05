@@ -1,3 +1,5 @@
+import typing
+
 from annotation.state import CODE_GAP
 from prefiltering.SimpleFilter import base_mapping
 
@@ -22,7 +24,7 @@ class Annotation:
         self.states = states
         self.skips = skips
         self.probability = probability
-        # self.motif = motif
+        self.motif = motif
         self.n_modules = len(motif)
 
         # Join subsequent states with number of deleted states between them
@@ -45,6 +47,9 @@ class Annotation:
         # get error line
         self.error_line, self.n_mismatches = self.__get_errors()
 
+        # gather sequences per module
+        self.sequences_per_module = self.__get_sequences_per_module()
+
     def __str__(self):
         """
         Return the annotation.
@@ -55,7 +60,7 @@ class Annotation:
     def __get_errors(self):
         """
         Count errors in annotation and the error line.
-        :return: tuple(str, str) - error line and number of mismatches/SNPs
+        :return: tuple(str, int) - error line and number of mismatches/SNPs
         """
         err_line = []
         mismatches = 0
@@ -82,9 +87,10 @@ class Annotation:
         for nucleotide, phred, skip in zip(self.read.sequence, self.read.quality, self.skips):
             seq.append(nucleotide)
             qual.append(phred)
-            for i in range(len(skip)):
+            for _ in range(len(skip)):
                 seq.append(CODE_GAP)
                 qual.append(CODE_GAP)
+        # add last one, due to fact, that self.skips is one unit shorter
         seq.append(self.read.sequence[-1])
         qual.append(self.read.quality[-1])
         return ''.join(seq), ''.join(qual)
@@ -98,6 +104,7 @@ class Annotation:
             state_seq.append(from_state)
             for s in skip:
                 state_seq.append(s)
+        # add last state
         state_seq.append(self.subsequent_states[-1][1])
         motif_seq = ''.join(str(state) for state in state_seq)
         module_seq = ''.join(str(state.module_id) for state in state_seq)
@@ -114,6 +121,17 @@ class Annotation:
                 bases[state.module_id] += 1
         return tuple(bases)
 
+    def __get_sequences_per_module(self) -> typing.List[str]:
+        """
+        List of sequences, each per module
+        :return: list(str)
+        """
+        sequences = [''] * self.n_modules
+        for state, nucleotide in zip(self.states, self.read.sequence):
+            if state.is_key() or state.is_insert():
+                sequences[state.module_id] += nucleotide
+        return sequences
+
     def __get_module_repetitions(self):
         """
         List of integers, each value corresponds to number of repetitions of module in annotation
@@ -126,7 +144,7 @@ class Annotation:
             if not state.is_key():
                 continue
             if state.module_id != last_module_id:
-                # add repetition to the module (if its not the first and not starting:)
+                # add repetition to the module (if it is not the first and not starting:)
                 if i != 0 or state.is_first_in_module():
                     repetitions[state.module_id] += 1
                 last_module_id = state.module_id
@@ -202,10 +220,10 @@ class Annotation:
             index_rep2 = index_rep
         index_rep, index_rep2 = min(index_rep, index_rep2), max(index_rep, index_rep2)
 
-        # if the module has right primer and it is clipped on the left
+        # if the module has right primer, and it is clipped on the left
         if index_rep2 + 1 < len(required_bases) and self.ann_module[0] != '-' and check_reqs(index_rep2 + 1) and check_reqs(index_rep):
             return True
-        # if the module has left primer and it is clipped on the right
+        # if the module has left primer, and it is clipped on the right
         if index_rep - 1 >= 0 and self.ann_module[-1] != '-' and check_reqs(index_rep - 1) and check_reqs(index_rep2):
             return True
         return False
@@ -297,3 +315,51 @@ class Annotation:
             if primer1 or primer2:
                 return primer1 and primer2, self.module_repetitions[index_str]
         return None
+
+    def get_nomenclature(self, include_flanking: bool = True) -> str:
+        """
+        Get HGVS nomenclature.
+        :param include_flanking: boolean - include flanking regions (i.e. first and last module)
+        :return: str - HGVS nomenclature string
+        """
+        # prepare data
+        nomenclature = ''
+        if include_flanking:
+            data = zip(self.module_repetitions, self.motif, self.sequences_per_module)
+        else:
+            data = zip(self.module_repetitions[1:-1], self.motif[1:-1], self.sequences_per_module[1:-1])
+
+        # iterate and build nomenclature string
+        for repetitions, (sequence, _), read_sequence in data:
+            if repetitions == 1:
+                nomenclature += read_sequence
+            else:
+                reps = 0
+                search_pos = 0
+                while True:
+                    search_found = read_sequence.find(sequence, search_pos)
+                    if search_found == search_pos:
+                        # regular continuation
+                        reps += 1
+                        search_pos = search_found + len(sequence)
+                    elif search_found == -1:
+                        # the end, we did not find any other STRs
+                        if reps > 0:
+                            if reps == 1:
+                                nomenclature += sequence
+                            else:
+                                nomenclature += f'({sequence}){reps}'
+                        nomenclature += read_sequence[search_pos:]
+                        break
+                    else:
+                        # some interruption
+                        if reps > 0:
+                            if reps == 1:
+                                nomenclature += sequence
+                            else:
+                                nomenclature += f'({sequence}){reps}'
+                        nomenclature += read_sequence[search_pos:search_found]
+                        reps = 1
+                        search_pos = search_found + len(sequence)
+
+        return nomenclature

@@ -178,7 +178,7 @@ class ReadFile:
         self.n_parsed_reads = 0
         for read in self.reader:
             if self.maximal_reads is not None and self.n_parsed_reads >= self.maximal_reads:
-                raise StopIteration
+                break
             self.distribution[len(read)] += 1
             if self.iter_standard:
                 self.n_parsed_reads += 1

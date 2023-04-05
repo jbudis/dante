@@ -169,20 +169,6 @@ def write_summary_statistics(out_file, annotations, n_parsed_reads):
         fw.write(templates.OUT_STATS.format(inserts=inserts, deletes=deletes, bases=bases, remained=remained))
 
 
-def tuple_sort_key(values):
-    """
-    Key for sorting tuples of integer values. First sort according to the first value, then second ...
-    :param values: tuple of positive integers
-    :return: positive integer that can be used as sort key
-    """
-    key = 0
-    max_value, multi = 100000000, 1
-    for value in values[::-1]:
-        key += multi + value
-        max_value *= multi
-    return key
-
-
 def sorted_repetitions(annotations):
     """
     Aggregate same repetition counts for annotations and sort them according to quantity of repetitions of each module
@@ -190,7 +176,7 @@ def sorted_repetitions(annotations):
     :return: list of (repetitions, count), sorted by repetitions
     """
     count_dict = Counter(tuple(annotation.module_repetitions) for annotation in annotations)
-    return sorted(count_dict.items(), key=lambda k: tuple_sort_key(k[0]))
+    return sorted(count_dict.items(), key=lambda k: k[0])
 
 
 def write_histogram(out_file, annotations, profile_file=None, index_rep=None, quiet=False):
@@ -211,17 +197,32 @@ def write_histogram(out_file, annotations, profile_file=None, index_rep=None, qu
             rep_code = '\t'.join(map(str, repetitions))
             fw.write('%s\t%s\n' % (counts, rep_code))
 
-    # write profile
-    if not quiet:
-        if profile_file is not None and index_rep is not None:
-            length = max([0] + [x[0][index_rep] for x in sorted_reps])
-            profile = np.zeros(length + 1, dtype=int)
+    # write profile if possible and needed
+    if not quiet and profile_file is not None and index_rep is not None:
+        length = max([0] + [x[0][index_rep] for x in sorted_reps])
+        profile = np.zeros(length + 1, dtype=int)
 
-            for repetitions, counts in sorted_reps:
-                profile[repetitions[index_rep]] += counts
+        for repetitions, counts in sorted_reps:
+            profile[repetitions[index_rep]] += counts
 
-            with open(profile_file, 'w') as f:
-                f.write('\t'.join(map(str, profile)))
+        with open(profile_file, 'w') as f:
+            f.write('\t'.join(map(str, profile)))
+
+
+def write_histogram_nomenclature(out_file, annotations):
+    """
+    Stores quantity of different nomenclature strings into text file
+    :param out_file: str - output file for repetitions
+    :param annotations: Annotated reads
+    """
+    # count nomenclature strings:
+    count_dict = Counter(annotation.get_nomenclature(False) for annotation in annotations)
+    count_dict = sorted(count_dict.items(), key=lambda k: (-k[1], k[0]))
+
+    # write nomenclatures to file
+    with open(out_file, 'w') as fw:
+        for nomenclature, count in count_dict:
+            fw.write('%s\t%s\n' % (count, nomenclature))
 
 
 def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq, seq2):
@@ -461,8 +462,10 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
 
     if not quiet or len(quality_annotations) > 0:
         write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
+        write_histogram_nomenclature('%s/nomenclatures_%d.txt' % (motif_dir, j + 1), quality_annotations)
     if not quiet or len(filt_primer) > 0:
         write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer, quiet=quiet)
+        write_histogram_nomenclature('%s/nomenclatures_grey_%d.txt' % (motif_dir, j + 1), filt_primer)
 
 
 def get_seq_from_module(module_dict):
@@ -603,13 +606,14 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     return result_table
 
 
-def write_report(report_dir, motifs, output_dir, quiet=False):
+def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=False):
     """
     Generate and write a report.
     :param report_dir: str - dir name for reports
     :param motifs: dict - parameters of motifs
     :param output_dir: str - output directory for searching of all_call outputs
     :param quiet: boolean - less files on the output?
+    :param skip_annotations: boolean - skip annotation generation
     :return: None
     """
     # tsv file with table:
@@ -644,10 +648,10 @@ def write_report(report_dir, motifs, output_dir, quiet=False):
                 if not os.path.exists(pcol_file):
                     pcol_file = None
                 align_file = '%s/%s/alignment_%d.fasta' % (output_dir, motif_name, i + 1)
-                if not os.path.exists(align_file):
+                if not os.path.exists(align_file) or skip_annotations:
                     align_file = None
                 filt_align_file = '%s/%s/alignment_filtered_%d.fasta' % (output_dir, motif_name, i + 1)
-                if not os.path.exists(filt_align_file):
+                if not os.path.exists(filt_align_file) or skip_annotations:
                     filt_align_file = None
                 confidence = read_all_call('%s/%s/allcall_%d.txt' % (output_dir, motif_name, i + 1))
 

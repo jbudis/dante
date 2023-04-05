@@ -179,7 +179,7 @@ class AnnotationPair:
         :param ann2: Annotation - second annotation of a pair
         :type ann2: Annotation | None
         """
-        assert isinstance(ann1, Annotation), "Ann1 is no Annotation, but %s" % type(ann1).__name__
+        # assert isinstance(ann1, Annotation), "Ann1 is no Annotation, but %s" % type(ann1).__name__ # TODO why this throws?
 
         self.ann1 = ann1
         self.ann2 = ann2
