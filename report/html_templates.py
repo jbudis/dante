@@ -26,11 +26,11 @@ make_datatable_string = """
 """
 
 content_string = """ <tr>
-    <td class="mtg-s6z2">
-        <button class="tablinks" onclick="openTab(event, '{motif_name}'); $('.{motif_name}').trigger('content-change');">
-            <a href="#{motif_name}">{motif}</a>
-        </button>
-    </td>
+<td class="mtg-s6z2">
+    <button class="tablinks" onclick="openTab(event, '{motif_name}'); $('.{motif_name}').trigger('content-change');">
+        <a href="#{motif_name}">{motif}</a>
+    </button>
+</td>
 </tr>"""
 
 content_string_empty = ""
@@ -159,7 +159,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-{alignment}
+<p><a href="{alignment}">Link to alignments</a></p>
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -208,7 +208,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-{alignment}
+<p><a href="{alignment}">Link to alignments</a></p>
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -239,7 +239,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-{alignment}
+<p><a href="{alignment}">Link to alignments</a></p>
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -264,7 +264,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-{alignment}
+<p><a href="{alignment}">Link to alignments</a></p>
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -283,7 +283,6 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-{alignment}
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -295,45 +294,13 @@ NOT AVAILABLE
 
 motif_string_empty = ""
 
-align_vis = """
-  <details>
-    <summary>{display_text}</summary>
-    <div id="A{name}" class="align {motif_id}">press "Run with JS"</div>
-    <script>
-        {{
-            let {name}_fasta = `{fasta}`;
-            let {name}_act = false;
-            $(document).ready( function() {{
-                $('.{motif_id}').bind("content-change", function() {{
-                    if ({name}_act === false && document.getElementById('{motif_id}').style.display === 'block') {{
-                        let seqs = msa.io.fasta.parse({name}_fasta);
-                        let opts = {{
-                            el: document.getElementById("A{name}"),
-                            vis: {{
-                                conserv: false,
-                                metaIdentity: true,
-                                overviewbox: true,
-                                seqlogo: true
-                            }},
-                            seqs: seqs,
-                            colorscheme: {{"scheme": "nucleotide"}},
-                            // smaller menu for JSBin
-                            menu: "small",
-                            bootstrapMenu: true
-                        }};
-                        {name}_act = true;
-                        
-                        let m = new msa.msa(opts);
-                        m.render()
-                    }}
-                }})
-            }})
-        }}
-    </script>
-  </details>
+alignment_string = """
+  <p>{sequence}</p>
+  {alignment}
+  <hr>
 """
 
-align_vis_static = """
+align_vis = """
   <details>
     <summary>{display_text}</summary>
     <div id="A{name}" class="align">press "Run with JS"</div>
@@ -436,6 +403,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     :param confidence: tuple - motif confidences and allele predictions
     :param postfilter: dict - postfilter dict from config
     :param highlight: list(int)/None - which part of seq to highlight
+    :param static: bool - boolean to generate static or dynamic report
     :return: (str, str) - content and main part of the html report for motifs
     """
     # prepare and generate alignments
@@ -456,23 +424,14 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             if alignment is not None:
                 align_prefix = alignment[:alignment.rfind('.')]
 
-                if static:
-                    align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
-                                                       '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
-                                                       "Allele 1 (%2s) alignment visualization" % str(a1), static=True)
-                    if a1 != a2:
-                        align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
-                                                           '%s_a%s.fasta' % (align_prefix, str(a2)),
-                                                           motif_clean.split('_')[0],
-                                                           "Allele 2 (%2s) alignment visualization" % str(a2), static=True)
-                else:
-                    align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
-                                                       '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
-                                                       "Allele 1 (%2s) alignment visualization" % str(a1))
-                    if a1 != a2:
-                        align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
-                                                           '%s_a%s.fasta' % (align_prefix, str(a2)), motif_clean.split('_')[0],
-                                                           "Allele 2 (%2s) alignment visualization" % str(a2))
+                align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
+                                                   '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
+                                                   "Allele 1 (%2s) alignment visualization" % str(a1))
+                if a1 != a2:
+                    align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
+                                                       '%s_a%s.fasta' % (align_prefix, str(a2)),
+                                                       motif_clean.split('_')[0],
+                                                       "Allele 2 (%2s) alignment visualization" % str(a2))
 
     # errors:
     errors = postfilter['max_errors']
@@ -489,9 +448,9 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             #     reps = open(repetition, 'r').read()
 
             reps = open(repetition, 'r').read()
-            align_html = '' if alignment is None else generate_alignment(motif_clean, alignment, motif_clean.split('_')[0], static=True)
+            align_html = '' if alignment is None else generate_alignment(motif_clean, alignment, motif_clean.split('_')[0])
             filt_align_html = '' if filtered_alignment is None else generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
-                                                                                       'Partial reads alignment visualization', static=True)
+                                                                                       'Partial reads alignment visualization')
 
             if pcolor is not None:
                 # pcol = base64.b64encode(open(pcolor, "rb").read())
@@ -501,21 +460,26 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
                     motif_stringb64_static.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                                   motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
                                                   motif=motif, motif_reps=reps, result=result, motif_pcolor=pcol,
-                                                  alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html,
-                                                  sequence=sequence, errors=errors)
+                                                  alignment=f'{motif_clean.split("_")[0]}/alignments.html',
+                                                  sequence=sequence, errors=errors), \
+                    alignment_string.format(sequence=sequence,
+                                            alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html)
             else:
                 return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
                     motif_stringb64_reponly_static.format(post_bases=postfilter['bases'],
                                                           post_reps=postfilter['repetitions'],
                                                           motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
                                                           motif=motif, motif_reps=reps, result=result,
-                                                          alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html,
-                                                          sequence=sequence, errors=errors)
+                                                          alignment=f'{motif_clean.split("_")[0]}/alignments.html',
+                                                          sequence=sequence, errors=errors), \
+                    alignment_string.format(sequence=sequence,
+                                            alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html)
 
         else:
             return content_string_empty.format(motif_name=motif_name, motif=motif), \
                 motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors)
+                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors), \
+                ''
     else:
         if repetition is not None:
             reps = open(repetition, 'r').read()
@@ -529,23 +493,28 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
                     motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                            motif_name=motif_clean, motif_id=motif_clean.split('_')[0], motif=motif,
                                            motif_reps=reps, result=result, motif_pcolor=pcol,
-                                           alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html,
-                                           sequence=sequence, errors=errors)
+                                           alignment=f'{motif_clean.split("_")[0]}/alignments.html',
+                                           sequence=sequence, errors=errors), \
+                    alignment_string.format(sequence=sequence,
+                                            alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html)
             else:
                 return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
                     motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
                                                    motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
                                                    motif=motif, motif_reps=reps, result=result,
-                                                   alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html,
-                                                   sequence=sequence, errors=errors)
+                                                   alignment=f'{motif_clean.split("_")[0]}/alignments.html',
+                                                   sequence=sequence, errors=errors), \
+                    alignment_string.format(sequence=sequence,
+                                            alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html)
 
         else:
             return content_string_empty.format(motif_name=motif_name, motif=motif), \
                 motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors)
+                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors), \
+                ''
 
 
-def generate_alignment(motif, alignment_file, motif_id, display_text="Click to toggle alignment visualization", static=False):
+def generate_alignment(motif, alignment_file, motif_id, display_text="Click to toggle alignment visualization"):
     """
     Generate HTML code for the fancy alignment.
     :param motif: str - name of the motif
@@ -559,9 +528,6 @@ def generate_alignment(motif, alignment_file, motif_id, display_text="Click to t
             string = f.read()
         debug = string.find('#')
 
-        if static:
-            return align_vis_static.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
-        else:
-            return align_vis.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
+        return align_vis.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
     except (IOError, TypeError):
         return ""

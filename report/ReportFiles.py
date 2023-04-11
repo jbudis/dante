@@ -628,6 +628,7 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
     mcs = {}
     ms = {}
     rows = {}
+    alignments = {}
     mcs_static = []
     ms_static = []
     rows_static = []
@@ -675,14 +676,16 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
                 if not quiet:
-                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight)
+                    mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight)
                     if motif_name in mcs:
                         ms[motif_name].append(m)
+                        alignments[motif_name].append(a)
                     else:
                         mcs[motif_name] = mc
                         ms[motif_name] = [m]
+                        alignments[motif_name] = [a]
 
-                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, static=True)
+                    mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, static=True)
                     if mc not in mcs_static:
                         mcs_static.append(mc)
                     ms_static.append(m)
@@ -727,6 +730,14 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
 
         f.write(custom_format(template_static, motifs_content=contents_table,
                               table=table, motifs='\n'.join(ms_static)))
+
+    for motif in alignments.keys():
+        template_alignments = open('%s/alignments.html' % script_dir, 'r').read()
+        template_alignments = custom_format(template_alignments, sample=motif,
+                                            motif_desc='%s &ndash; %s' % (motif_name, description))
+
+        with open('%s/%s/alignments.html' % (report_dir, motif), 'w') as f:
+            f.write(custom_format(template_alignments, alignments='\n'.join(alignments[motif])))
 
     # copy javascript libraries
     if not quiet:
