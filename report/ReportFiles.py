@@ -1,14 +1,14 @@
 import os
 import re
 import shutil
-
-from collections import Counter
-import matplotlib.pyplot as plt
 import matplotlib
+from collections import Counter
 from matplotlib.colors import ListedColormap
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import templates
 import report.html_templates
@@ -66,7 +66,7 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
         else:
             annotations = [a for a in annotations if a.module_repetitions[index_rep] == allele]
 
-    alignments = [""] * len(annotations)
+    alignments = [''] * len(annotations)
     align_inds = np.zeros(len(annotations), dtype=int)
     states = []
     inserts = []
@@ -689,7 +689,7 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
 
                     # add to profiles
                     if postfilter['index_rep2'] == 'no':
-                        with open('%s/%s/profile_%d.txt' % (output_dir, motif_name, i + 1)) as po:
+                        with open('%s/%s/profile_%d.txt' % (output_dir, motif_name.replace('/', '_'), i + 1)) as po:
                             line = po.readline()
                             pf.write('%s_%d\t%s\n' % (motif_name, i + 1, line))
 

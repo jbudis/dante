@@ -173,7 +173,7 @@ class AnnotationPair:
 
     def __init__(self, ann1, ann2):
         """
-        Initialize the AnootationPair object
+        Initialize the AnnotationPair object
         :param ann1: Annotation - first annotation of a pair
         :type ann1: Annotation
         :param ann2: Annotation - second annotation of a pair

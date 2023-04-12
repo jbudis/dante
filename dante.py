@@ -1,16 +1,7 @@
-import matplotlib
-
-matplotlib.use('Agg')
-
 import os
 import cProfile
 import pstats
-import multiprocess
-import sys
 from datetime import datetime
-import traceback
-import logging
-import typing
 
 import arguments
 from parser import ReadFile
@@ -21,224 +12,10 @@ import annotation
 import postfilter
 from annotation import Annotator
 import all_call
-
-MOTIF_PRINT_LEN = 40
-
-
-def run_annot_iter(reader, annotators, filters, threads, annotated_read_prev, filtered_reads_prev, filter_on=True, report_every=100000):
-    """
-    Runs the annotator iteratively and in parallel on all reads in reader.
-    :param reader: iterator - iterative reader
-    :param annotators: list(Annotator) - annotator classes for annotating reads
-    :param filters: list(filters) - filters for pre-filtering reads
-    :param threads: int - number of threads to use
-    :param annotated_read_prev: list(int) - previously annotated reads
-    :param filtered_reads_prev: int - previously filtered reads
-    :param filter_on: bool - whether the filtering in subprocesses is on
-    :param report_every: int - report progress every this number of reads
-    :return: list(2D), int, int - list of annotations for filtered reads, number of annotated reads, number of filtered reads
-    """
-
-    # construct shared value and lock
-    annotated_reads = multiprocess.Array('i', annotated_read_prev)
-    filtered_reads = multiprocess.Value('i', filtered_reads_prev)
-    lock = multiprocess.Lock()
-
-    def init_pool(l, ar, fr, an, flt, f_on, report_num):
-        """
-        Initializes a pool with variables
-        :param l: Lock - shared lock object for all processes
-        :param ar: Array - shared Array for all processes
-        :param fr: Array - shared Array for all processes
-        :param an: Annotators - shared Annotators object for all processes
-        :param flt: filter functions - filter functions for pre-filtering reads
-        :param f_on: bool - filter is on?
-        :param report_num: int - how often to report progress
-        :return: None
-        """
-        global lock
-        global annotated_reads
-        global filtered_reads
-        global annotators
-        global filters
-        global filter_on
-        global report_every
-        lock = l
-        annotated_reads = ar
-        filtered_reads = fr
-        annotators = an
-        filters = flt
-        filter_on = f_on
-        report_every = report_num
-
-        if PROFILE:
-            global prof
-            prof = cProfile.Profile()
-
-            def fin():
-                try:
-                    with open('%s/profile-%s.out' % (config['general']['output_dir'], multiprocess.current_process().pid), "w") as f:
-                        pstats.Stats(prof, stream=f).strip_dirs().sort_stats("time").print_stats()
-                except TypeError:  # empty prof
-                    pass
-
-            multiprocess.util.Finalize(None, fin, exitpriority=1)
-
-    def annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every, lock=None):
-        """
-        Annotate a single read with global Annotator object.
-        :param read: triple - read to be annotated
-        :param l: Lock - shared lock object for all processes
-        :param annotated_reads: Array - shared Array for all processes
-        :param filtered_reads: Array - shared Array for all processes
-        :param annotators: Annotators - shared Annotators object for all processes
-        :param filters: filter functions - filter functions for pre-filtering reads
-        :param filter_on: bool - filter is on?
-        :param report_every: int - how often to report progress
-        :param lock: lock object - if specified then use lock for printing
-        :return: tuple - annotated read (output of Annotator), read
-        """
-        # filter and annotate a read
-        annotation = [None for _ in range(len(annotators))]
-        for i, (annotator, filter) in enumerate(zip(annotators, filters)):
-            if filter.filter_read(read):
-                annot = annotator.annotate(read)
-                annotation[i] = annot
-                annotated_reads[i] += 1
-                if filter_on and not annotation[i].is_annotated_right():
-                    annotation[i] = None
-
-                # was this read correctly annotated?
-                if config['general']['verbosity'] > 1:
-                    if lock is not None:
-                        lock.acquire()
-                    report.log_str('Read %15s annotated with Annotator %s Filter %s - %s' % (
-                        str(read), annotator, filter, 'OK' if annotation[i] is not None else ('FLT_FAIL' if annot is None else 'ANN_FAIL')))
-                    if lock is not None:
-                        lock.release()
-
-        # write down progress
-        filtered_reads.value += 1
-
-        # print progress
-        if report_every > 0 and filtered_reads.value % report_every == 0:
-            if lock is not None:
-                lock.acquire()
-            s = f'\r    processed: {filtered_reads.value:8d} (passed filtering: {" ".join(map(str, annotated_reads))}) {datetime.now() - start_time}'
-            report.log_str(s, stdout_too=False, priority=logging.DEBUG, flush=True)
-            sys.stdout.write(s)
-            sys.stdout.flush()
-            if lock is not None:
-                lock.release()
-
-        # return result
-        return annotation
-
-    def annotate_read(read):
-        """
-        Annotate a single read with global Annotator object.
-        :param read: triple - read to be annotated
-        :return: tuple - annotated read (output of Annotator), read
-        """
-        # start profiler
-        if PROFILE:
-            global prof
-            prof.enable()
-
-        global lock
-        global annotated_reads
-        global filtered_reads
-        global annotators
-        global filters
-        global filter_on
-        global report_every
-
-        try:
-            annotation = annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every, lock)
-        except Exception as e:
-            print('Exception in child process:')
-            traceback.print_exc()
-            raise e
-
-        # stop profiler.
-        if PROFILE:
-            prof.disable()
-
-        # return result
-        return annotation
-
-    def gather_res(results: typing.Iterable[list], length: int):
-        res = [[] for _ in range(length)]
-        for partial_res in results:
-            for i, pr in enumerate(partial_res):
-                if pr is not None:
-                    res[i].append(pr)
-
-        return res
-
-    # crate pool and initialize it with init_pool
-    if threads > 1 or config['general'].get('force_parallel', False):
-        # print('Running in parallel ({threads} cores)'.format(threads=threads))
-        pool = multiprocess.Pool(threads, initializer=init_pool,
-                                 initargs=(lock, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every))
-        results = pool.imap(annotate_read, reader, chunksize=100)
-        res = gather_res(results, len(annotators))
-        pool.close()
-        pool.join()
-    else:
-        # print('Running sequentially')
-        results = (annotate_read_sequentially(read, annotated_reads, filtered_reads, annotators, filters, filter_on, report_every) for read in reader)
-        res = gather_res(results, len(annotators))
-
-    # adjust for report every:
-    if report_every > 0:
-        print('')
-
-    # return
-    return res, filtered_reads.value, annotated_reads
+from parallelism.run_parallel import run_annot_iter, MOTIF_PRINT_LEN, shorten_str, create_annotators
 
 
-def shorten_str(string: str, max_length: int, ellipsis: str = '...') -> str:
-    """
-    Shorten string to max_length and include ellipsis.
-    :param string: str - string to shorten
-    :param max_length: int - maximum length to shorten to
-    :param ellipsis: str - ellipsis to add to end of string
-    """
-    if len(string) > max_length:
-        return string[:max_length - len(ellipsis)] + ellipsis
-    else:
-        return string
-
-
-def construct_annotator(motif):
-    """
-    Construct Annotator and prefilter based on motif.
-    :param motif: dict - motif specification
-    :return: Annotator, *Filter - annotator and prefilter constructed
-    """
-    sequence = ','.join([module_dict['seq'] for module_dict in motif['modules']])
-    motif_tuple = report.seq_into_tuple(sequence)
-
-    # initialize annotator
-    if not config['general']['quiet_mode']:
-        report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: Constructing annotator for '
-                       f'sequence {sequence}')
-    annotator = Annotator(motif_tuple, config['annotation']['delete_prob'], config['annotation']['insert_prob'],
-                          config['annotation']['max_delete_skips'], config['annotation']['motif_frequency'],
-                          config['annotation']['snp_chance'])
-
-    # initialize filter
-    read_filter = prefiltering.create_filter(motif['prefilter'], motif_tuple)
-
-    return annotator, read_filter
-
-
-"""
-Start of real code: whole dante annotation algorithm.
-"""
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     # print time of the start:
     start_time = datetime.now()
     print(templates.START_TIME.format(start=start_time))
@@ -248,44 +25,19 @@ if __name__ == "__main__":
 
     # start profiling if needed
     prog_prof = None
-    PROFILE = config['general']['profiler']
-    if PROFILE:
+    if config['general']['profiler']:
         prog_prof = cProfile.Profile()
         prog_prof.enable()
 
     # initialize logging module:
-    report.configure_logger("%s/dante.log" % config['general']['output_dir'])
+    report.configure_logger('%s/dante.log' % config['general']['output_dir'])
     report.log_str(templates.START_TIME.format(start=start_time), stdout_too=False)
 
-    # print arguments (too clunky)
-    # report.log_str(arguments.save_arguments(config))
-
-    # if not config['skip_annotation']:
-    # deduplicated reads
-    dedup_ap = [[] for _ in range(len(config['motifs']))]
-
-    # go through all motifs and construct annotators and filters:
-    annotators = []
-    filters = []
-
-    # create annotator generator
-    if len(config['motifs']) > 100 and config['general']['cpu'] > 1:
-        report.log_str('Annotators processing in parallel on {cpu} cores.'.format(cpu=config['general']['cpu']))
-        pool = multiprocess.Pool(config['general']['cpu'])
-        results = pool.imap(construct_annotator, config['motifs'])
-    else:
-        report.log_str('Annotators processing sequentially.')
-        results = (construct_annotator(motif) for motif in config['motifs'])
-
-    # fill annotators
-    for i, (annotator, read_filter) in enumerate(results):
-        if config['general']['quiet_mode'] and i % 100 == 0:
-            report.log_str(
-                'Constructing annotators: {i:6d}/{cnt:6d}   {date:%Y-%m-%d %H:%M:%S}'.format(i=i, cnt=len(config['motifs']), date=datetime.now()))
-        annotators.append(annotator)
-        filters.append(read_filter)
+    # create all annotators and filters
+    annotators, filters = create_annotators(config)
 
     # main annotation
+    dedup_ap = [[] for _ in range(len(config['motifs']))]
     all_reads = 0
     annotations = [[] for _ in range(len(annotators))]
     annotated_reads = [0] * len(annotations)
@@ -304,7 +56,6 @@ if __name__ == "__main__":
             include_unmapped = True
 
     for input_file in config['inputs']:
-
         # initialize reader
         read_filename = input_file['path']
         file_type = None if input_file['filetype'] == 'infer' else input_file['filetype']
@@ -312,7 +63,7 @@ if __name__ == "__main__":
 
         if bam:
             # annotate specified reads for every motif
-            report.log_str(f"Parsing file {read_filename} (bam type)")
+            report.log_str(f'Parsing file {read_filename} (bam type)')
             for i, motif in enumerate(config['motifs']):
                 if config['general']['quiet_mode'] and i % 100 == 0:
                     report.log_str(
@@ -329,11 +80,10 @@ if __name__ == "__main__":
 
                 # run annotator for current motif
                 report.log_str(
-                    f"Running annotator on {config['general']['cpu']} process(es) for file {read_filename} and motif {motif['description']}",
+                    f'Running annotator on {config["general"]["cpu"]} process(es) for file {read_filename} and motif {motif["description"]}',
                     stdout_too=not config['general']['quiet_mode'])
                 next_annotations, cur_reads, areads_new = run_annot_iter(read_file, annot, filt, config['general']['cpu'], areads, all_reads,
-                                                                         not config['general']['output_all'],
-                                                                         0 if config['general']['quiet_mode'] else config['general']['report_every'])
+                                                                         config, start_time)
                 new_reads = cur_reads - all_reads
                 all_reads += new_reads
                 annotated_reads[i] = areads_new[0] - areads[0]
@@ -344,23 +94,17 @@ if __name__ == "__main__":
                                stdout_too=not config['general']['quiet_mode'])
 
         if not bam or include_unmapped:
-            if read_filename == 'sys.stdin':
-                read_file = ReadFile(None, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'],
-                                     unmapped=include_unmapped)
-            else:
-                read_file = ReadFile(read_filename, config['general']['stranded'], max_reads, file_type, verbosity=config['general']['verbosity'],
-                                     unmapped=include_unmapped)
+            read_file = ReadFile(None if read_filename == 'sys.stdin' else read_filename, config['general']['stranded'], max_reads, file_type,
+                                 verbosity=config['general']['verbosity'], unmapped=include_unmapped)
 
-            report.log_str('Parsing file %s (%s type) with parser %s %s ' % (
-            read_filename, read_file.file_type, read_file.__class__.__name__, read_file.reader.__name__))
+            report.log_str('Parsing file %s (%s type) with parser %s %s ' % (read_filename, read_file.file_type, read_file.__class__.__name__,
+                                                                             read_file.reader.__name__))
 
             # run annotators
             report.log_str('Running %d annotator(s) on %2d process(es) for file %s' % (len(annotators), config['general']['cpu'], read_filename))
             readers.append(read_file)
             next_annotations, cur_reads, annotated_reads = run_annot_iter(read_file, annotators, filters, config['general']['cpu'], annotated_reads,
-                                                                          all_reads,
-                                                                          not config['general']['output_all'],
-                                                                          0 if config['general']['quiet_mode'] else config['general']['report_every'])
+                                                                          all_reads, config, start_time)
             new_reads = cur_reads - all_reads
             all_reads += new_reads
             for i, pr in enumerate(next_annotations):
@@ -380,7 +124,7 @@ if __name__ == "__main__":
                        stdout_too=not config['general']['quiet_mode'])
 
         # setup motif sequences and dir
-        motif_dir = '%s/%s' % (config['general']['output_dir'], motif['full_name'])
+        motif_dir = '%s/%s' % (config['general']['output_dir'], motif['full_name'].replace('/', '_'))
         sequence = ','.join([module_dict['seq'] for module_dict in motif['modules']])
         motif_tuple = report.seq_into_tuple(sequence)
 
@@ -430,7 +174,6 @@ if __name__ == "__main__":
                            stdout_too=not config['general']['quiet_mode'])
 
             # write it to files
-
             report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: Generating output files into {motif_dir}',
                            stdout_too=not config['general']['quiet_mode'])
             report.write_all(qual_annot, primer_annot, filt_annot, dedup_ap[i], all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j,
@@ -443,7 +186,7 @@ if __name__ == "__main__":
 
         sequence = ','.join([module_dict['seq'] for module_dict in motif['modules']])
         motif_tuple = report.seq_into_tuple(sequence)
-        motif_dir = '%s/%s' % (config['general']['output_dir'], motif['full_name'])
+        motif_dir = '%s/%s' % (config['general']['output_dir'], motif['full_name'].replace('/', '_'))
 
         for j, pstf in enumerate(motif['postfilter']):
 
@@ -509,7 +252,7 @@ if __name__ == "__main__":
     report.log_str('Total time of run : {duration}'.format(duration=end_time - start_time))
 
     # stop profiler:
-    if PROFILE:
+    if config['general']['profiler']:
         prog_prof.disable()
-        with open('%s/profile-main.out' % config['general']['output_dir'], "w") as f:
-            pstats.Stats(prog_prof, stream=f).strip_dirs().sort_stats("time").print_stats()
+        with open('%s/profile-main.out' % config['general']['output_dir'], 'w') as f:
+            pstats.Stats(prog_prof, stream=f).strip_dirs().sort_stats('time').print_stats()
