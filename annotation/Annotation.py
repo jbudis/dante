@@ -332,7 +332,8 @@ class Annotation:
         # iterate and build nomenclature string
         for repetitions, (sequence, _), read_sequence in data:
             if repetitions == 1:
-                nomenclature += f'{read_sequence}[1]'
+                if len(read_sequence) > 0:
+                    nomenclature += f'{read_sequence}[1]'
             else:
                 reps = 0
                 search_pos = 0
@@ -346,13 +347,15 @@ class Annotation:
                         # the end, we did not find any other STRs
                         if reps > 0:
                             nomenclature += f'{sequence}[{reps}]'
-                        nomenclature += f'{read_sequence[search_pos:]}[1]'
+                        if len(read_sequence[search_pos:]) > 0:
+                            nomenclature += f'{read_sequence[search_pos:]}[1]'
                         break
                     else:
                         # some interruption
                         if reps > 0:
                             nomenclature += f'{sequence}[{reps}]'
-                        nomenclature += f'{read_sequence[search_pos:search_found]}[1]'
+                        if len(read_sequence[search_pos:search_found]) > 0:
+                            nomenclature += f'{read_sequence[search_pos:search_found]}[1]'
                         reps = 1
                         search_pos = search_found + len(sequence)
 
