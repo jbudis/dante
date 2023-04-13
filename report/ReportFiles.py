@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import typing
 import matplotlib
 from collections import Counter
 from matplotlib.colors import ListedColormap
@@ -10,6 +11,7 @@ import pandas as pd
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+import annotation
 import templates
 import report.html_templates
 
@@ -20,7 +22,8 @@ MAX_REPETITIONS = 40
 def gen_annot_string(annotation):
     likelihood = float(annotation.probability)
     pairness = {None: 'Unknown', True: 'R1', False: 'R2'}[annotation.read.left_pair]
-    ann = templates.ANNOTATION.format(annotation=annotation, likelihood=likelihood, errors=annotation.n_insertions + annotation.n_deletions + annotation.n_mismatches, pairness=pairness)
+    ann = templates.ANNOTATION.format(annotation=annotation, likelihood=likelihood,
+                                      errors=annotation.n_insertions + annotation.n_deletions + annotation.n_mismatches, pairness=pairness)
     return ann
 
 
@@ -51,7 +54,7 @@ def write_annotation_pairs(out_file, annotation_pairs):
 
 def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=None, allele2=None):
     """
-    Creates a multialignment of all annotations into output text file
+    Creates a multi-alignment of all annotations into output text file
     :param out_file: str - alignment filename
     :param annotations: list(Annotation) - annotated reads
     :param index_rep: int - index of repetition module of a motif
@@ -104,7 +107,8 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
 
     # sort according to motif count:
     if index_rep2 is not None:
-        reps = np.array([ann.module_repetitions[index_rep] * 100000 + ann.module_repetitions[index_rep2] for ann in annotations])  # trick to have sorting first with 1st allele then with second
+        # trick to have sorting first with 1st allele then with second
+        reps = np.array([ann.module_repetitions[index_rep] * 100000 + ann.module_repetitions[index_rep2] for ann in annotations])
     else:
         reps = np.array([ann.module_repetitions[index_rep] for ann in annotations])
     sort_inds = np.argsort(-reps)
@@ -121,6 +125,7 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
         """
         background = alignment[:background_length]
         # find last empty:
+        i = 0
         for i in reversed(range(background_length)):
             if background[i] != '_':
                 break
@@ -148,7 +153,7 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
             print('>%s' % annot.read.name, file=fw)
             print(align, file=fw)
         # print debug info
-        print("# debug", file=fw)
+        print('# debug', file=fw)
         print(''.join(inserts), file=fw)
         print(''.join(map(lambda x: get_haxadec(int(x / 10)), states)), file=fw)
         print(''.join(map(lambda x: str(x % 10), states)), file=fw)
@@ -156,7 +161,7 @@ def write_alignment(out_file, annotations, index_rep, index_rep2=None, allele=No
 
 def write_summary_statistics(out_file, annotations, n_parsed_reads):
     """
-    Stores annotation statistics into output text file
+    Stores annotation statistics into output text file.
     :param out_file: File for output statistics
     :param annotations: Annotated reads
     :param n_parsed_reads: Number of reads in the input read file
@@ -209,14 +214,16 @@ def write_histogram(out_file, annotations, profile_file=None, index_rep=None, qu
             f.write('\t'.join(map(str, profile)))
 
 
-def write_histogram_nomenclature(out_file, annotations):
+def write_histogram_nomenclature(out_file: str, annotations: typing.List[annotation.Annotation], index_rep: int = None, index_rep2: int = None) -> None:
     """
     Stores quantity of different nomenclature strings into text file
     :param out_file: str - output file for repetitions
     :param annotations: Annotated reads
+    :param index_rep: int - index of the first repetition (None if include all)
+    :param index_rep2: int - index of the second repetition (None if include all)
     """
     # count nomenclature strings:
-    count_dict = Counter(annotation.get_nomenclature(False) for annotation in annotations)
+    count_dict = Counter(annotation.get_nomenclature(index_rep, index_rep2, False) for annotation in annotations)
     count_dict = sorted(count_dict.items(), key=lambda k: (-k[1], k[0]))
 
     # write nomenclatures to file
@@ -270,7 +277,8 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
 
     # plot pcolor
     plt.figure(figsize=(12, 8))
-    img2 = plt.pcolor(data_primer[:max_ticks, :max_ticks], cmap='Blues', alpha=0.4, edgecolor=(1.0, 1.0, 1.0, 0.0), lw=0, vmin=np.min(data_primer), vmax=np.max(data_primer) + 0.01)
+    img2 = plt.pcolor(data_primer[:max_ticks, :max_ticks], cmap='Blues', alpha=0.4, edgecolor=(1.0, 1.0, 1.0, 0.0), lw=0, vmin=np.min(data_primer),
+                      vmax=np.max(data_primer) + 0.01)
     img1 = plt.pcolor(data[:max_ticks, :max_ticks], cmap=my_cmap, vmin=np.min(data), vmax=np.max(data) + 0.01)
     plt.xticks()
     plt.ylabel('STR %d [%s]' % (index_rep + 1, seq.split('-')[-1]))
@@ -310,13 +318,13 @@ def write_histogram_image2d(out_prefix, deduplicated, index_rep, index_rep2, seq
                              showscale=True, colorbar_x=1.3, colorbar_title='Partial reads', colorscale='Blues'))
     fig.add_trace(go.Heatmap(z=data[:max_ticks, :max_ticks], text=text, name='Repetitions heatmap',
                              showscale=True, colorbar_title='Full reads',
-                             colorscale=[[0.0, "rgba(255, 255, 255, 0.0)"],
-                                         [0.01, "rgba(249, 217, 201, 1.0)"],
-                                         [0.5, "rgba(229, 103, 76, 1.0)"],
-                                         [1.0, "rgba(143, 33, 29, 1.0)"]]))
+                             colorscale=[[0.0, 'rgba(255, 255, 255, 0.0)'],
+                                         [0.01, 'rgba(249, 217, 201, 1.0)'],
+                                         [0.5, 'rgba(229, 103, 76, 1.0)'],
+                                         [1.0, 'rgba(143, 33, 29, 1.0)']]))
 
     fig.update_traces(texttemplate='%{text}', textfont_size=7,
-                      hovertemplate="<b>{name1}:\t%{y}<br />{name2}:\t%{x}</b><br />Full / Partial:\t%{text}".
+                      hovertemplate='<b>{name1}:\t%{y}<br />{name2}:\t%{x}</b><br />Full / Partial:\t%{text}'.
                       format(name1=str1, y='{y}', name2=str2, x='{x}', text='{text}'))
     fig.update_layout(width=800, height=700, template='simple_white')
     fig.update_yaxes(title_text=str1)
@@ -332,7 +340,7 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     """
     Stores quantity of different combinations of module repetitions, generates separate graph image for each module
     :param out_prefix: Output file prefix
-    :param annotations: Annotated reads
+    :param annotations: Annotated reads.
     :param filt_annot: Annotated reads (filtered)
     :param index_rep: int - index of repetition module of a motif
     """
@@ -362,8 +370,8 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     rects_filt = plt.bar(np.arange(xm + 1), dist_filt, width, color='grey', alpha=0.4)
     rects = plt.bar(np.arange(xm + 1), dist, width)
     plt.xticks(np.arange(1, xm + 1))
-    plt.ylabel("Counts")
-    plt.xlabel("STR repetitions")
+    plt.ylabel('Counts')
+    plt.xlabel('STR repetitions')
     _, max_y = plt.ylim()
     plt.xlim((0, xm + 1))
 
@@ -375,7 +383,8 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
         if height > 0:
             plt.text(rect.get_x() + rect.get_width() / 2., height + max_y / 100.0, '%d' % int(height), ha='center', va='bottom')
         if height_filt != height:
-            plt.text(rect_filt.get_x() + rect_filt.get_width() / 2., height_filt + max_y / 100.0, '%d' % int(height_filt - height), ha='center', va='bottom', color='grey')
+            plt.text(rect_filt.get_x() + rect_filt.get_width() / 2., height_filt + max_y / 100.0, '%d' % int(height_filt - height), ha='center',
+                     va='bottom', color='grey')
 
     # output it
     plt.savefig(out_prefix + '.pdf')
@@ -385,14 +394,14 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     # ----- PLOTLY HISTOGRAM -----
     def parse_labels(_dist_filt, _dist):
         if _dist_filt == 0:
-            return ""
+            return ''
         elif _dist_filt != 0 and _dist == 0:
             return str(_dist_filt)
         elif _dist_filt != 0 and _dist != 0:
             if _dist_filt > _dist:
                 return str(_dist_filt - _dist)
             else:
-                return ""
+                return ''
         else:
             return str(_dist_filt)
 
@@ -404,15 +413,15 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
                 marker_color='rgb(204, 204, 204)', textfont_color='rgb(204, 204, 204)')
     fig.add_bar(y=dist, text=dist_text, marker_color='#636EFA', name='Full reads ')
 
-    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate="%{text}", textfont_size=7)
+    fig.update_traces(textposition='outside', texttemplate='%{text}', hovertemplate='%{text}', textfont_size=7)
     fig.update_layout(width=800, height=450,
                       title='Histogram of repetitions',
                       hovermode='x',
                       yaxis_fixedrange=True,
                       template='simple_white',
                       barmode='overlay')
-    fig.update_yaxes(title_text="Read counts")
-    fig.update_xaxes(title_text="STR repetitions", tickmode='array',
+    fig.update_yaxes(title_text='Read counts')
+    fig.update_xaxes(title_text='STR repetitions', tickmode='array',
                      tickvals=list(range(5, len(dist), 5)),
                      ticktext=list(range(5, len(dist), 5)))
 
@@ -422,20 +431,19 @@ def write_histogram_image(out_prefix, annotations, filt_annot, index_rep):
     # fig.write_image(out_prefix + '_plotly.pdf')
 
 
-def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, all_reads, motif_dir, motif_modules, index_rep, index_rep2, j, quiet=False):
+def write_all(quality_annotations, filt_primer, filtered_annotations, all_reads, motif_dir, motif_modules, index_rep, index_rep2, j, quiet=False):
     """
     Write all output files: quality annotations, one-primer annotations, filtered annotations, statistics, repetitions + images.
     :param quality_annotations: list(Annotation) - list of blue annotations
     :param filt_primer: list(Annotation) - list of grey annotations
-    :param filtered_annotations: list(Annotation) - list of filtered out annotations
-    :param dedup_ap: list(AnnotationPair) - deduplicated annotation pairs
+    :param filtered_annotations: list(Annotation) - list of filtered out annotation
     :param all_reads: int - number of all reads
     :param motif_dir: str - path to motif directory
     :param motif_modules: dict - motif modules dictionary from config
     :param index_rep: int - index of first repetition in modules
     :param index_rep2: int - index of second repetition in modules
-    :param j: int - index of postfilter
-    :param quiet: boolean - less files on the output?
+    :param j: int - index of post-filter
+    :param quiet: boolean - fewer files on the output?
     :return: None
     """
     # create dir if not exists:
@@ -448,24 +456,22 @@ def write_all(quality_annotations, filt_primer, filtered_annotations, dedup_ap, 
         write_annotations('%s/filtered_%d.txt' % (motif_dir, j + 1), filtered_annotations)
         write_annotations('%s/filtered_primer_%d.txt' % (motif_dir, j + 1), filt_primer)
         write_summary_statistics('%s/stats_%d.txt' % (motif_dir, j + 1), quality_annotations, all_reads)
+        write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep, index_rep2)
+        write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filt_primer, index_rep, index_rep2)
 
         if index_rep2 is not None:
-            # print("aps", len(dedup_ap[i]))
-            write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations + filt_primer, index_rep - 1, index_rep2 - 1,
-                                    motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2 - 1]['seq'])
-            write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1, index_rep2 - 1)
-            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filt_primer, index_rep - 1, index_rep2 - 1)
+            write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations + filt_primer, index_rep, index_rep2,
+                                    motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2]['seq'])
         else:
-            write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep - 1)
-            write_alignment('%s/alignment_%d.fasta' % (motif_dir, j + 1), quality_annotations, index_rep - 1)
-            write_alignment('%s/alignment_filtered_%d.fasta' % (motif_dir, j + 1), filt_primer, index_rep - 1)
+            write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep)
 
     if not quiet or len(quality_annotations) > 0:
-        write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1), index_rep=index_rep - 1, quiet=quiet)
-        write_histogram_nomenclature('%s/nomenclatures_%d.txt' % (motif_dir, j + 1), quality_annotations)
+        write_histogram('%s/repetitions_%d.txt' % (motif_dir, j + 1), quality_annotations, profile_file='%s/profile_%d.txt' % (motif_dir, j + 1),
+                        index_rep=index_rep, quiet=quiet)
+        write_histogram_nomenclature('%s/nomenclatures_%d.txt' % (motif_dir, j + 1), quality_annotations, index_rep=index_rep, index_rep2=index_rep2)
     if not quiet or len(filt_primer) > 0:
         write_histogram('%s/repetitions_grey_%d.txt' % (motif_dir, j + 1), filt_primer, quiet=quiet)
-        write_histogram_nomenclature('%s/nomenclatures_grey_%d.txt' % (motif_dir, j + 1), filt_primer)
+        write_histogram_nomenclature('%s/nomenclatures_grey_%d.txt' % (motif_dir, j + 1), filt_primer, index_rep=index_rep, index_rep2=index_rep2)
 
 
 def get_seq_from_module(module_dict):
@@ -536,7 +542,7 @@ def custom_format(template, **kwargs):
 def seq_into_tuple(sequence):
     """
     Extract all repeating motifs.
-    :param sequence: str - motif sequence in ACATCAG,3-TGT,CATCGACT format
+    :param sequence: str - motif sequence in "ACATCAG,3-TGT,CATCGACT" format
     :return: list(tuple) - motif sequence in list((seq, rep)) format
     """
     modules = sequence.split(',')
@@ -547,7 +553,7 @@ def tuple_into_seq(list_tuple):
     """
     Extract all repeating motifs.
     :param list_tuple: list(tuple) - motif sequence in list((seq, rep)) format
-    :return: str - motif sequence in ACATCAG,3-TGT,CATCGACT format
+    :return: str - motif sequence in "ACATCAG,3-TGT,CATCGACT" format
     """
     return ','.join([s if r == 1 else '%d-%s' % (r, s) for (s, r) in list_tuple])
 
@@ -573,11 +579,11 @@ def get_read_count(filename):
 # add to report table
 def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence):
     """
-    Create report table in pandas
+    Create report table in pandas.
     :param result_table: pandas.DataFrame - table with the results
     :param motif_name: str- motif name
     :param seq: str - sequence
-    :param postfilter: dict - postfilter options
+    :param postfilter: dict - post-filter options
     :param reads_blue: int - number of full reads
     :param reads_grey: int - number of partial reads
     :param confidence: tuple - allele predictions and their confidence
@@ -612,14 +618,15 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
     :param report_dir: str - dir name for reports
     :param motifs: dict - parameters of motifs
     :param output_dir: str - output directory for searching of all_call outputs
-    :param quiet: boolean - less files on the output?
+    :param quiet: boolean - fewer files on the output?
     :param skip_annotations: boolean - skip annotation generation
     :return: None
     """
     # tsv file with table:
-    result_table = pd.DataFrame([], columns=['Motif', 'Sequence', 'Repetition index', 'Postfilter bases', 'Postfilter repetitions', 'Overall confidence',
-                                             'Allele 1 prediction', 'Allele 1 confidence', 'Allele 2 prediction', 'Allele 2 confidence', 'Reads (full)', 'Reads (partial)',
-                                             'Both Background prob.', 'One Background prob.', 'Background Expanded prob.', 'One Expanded prob.'])
+    result_table = pd.DataFrame([], columns=['Motif', 'Sequence', 'Repetition index', 'Postfilter bases', 'Postfilter repetitions',
+                                             'Overall confidence', 'Allele 1 prediction', 'Allele 1 confidence', 'Allele 2 prediction',
+                                             'Allele 2 confidence', 'Reads (full)', 'Reads (partial)', 'Both Background prob.',
+                                             'One Background prob.', 'Background Expanded prob.', 'One Expanded prob.'])
 
     # merge all_profiles:
     all_profiles = '%s/all_profiles.txt' % output_dir
@@ -675,14 +682,16 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
                 if not quiet:
-                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight)
+                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file,
+                                                                    confidence, postfilter, highlight=highlight)
                     if motif_name in mcs:
                         ms[motif_name].append(m)
                     else:
                         mcs[motif_name] = mc
                         ms[motif_name] = [m]
 
-                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, static=True)
+                    mc, m = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file,
+                                                                    confidence, postfilter, highlight=highlight, static=True)
                     if mc not in mcs_static:
                         mcs_static.append(mc)
                     ms_static.append(m)
@@ -717,7 +726,8 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
         for motif in sorted(motifs, key=lambda x: x['full_name']):
             m = motif['full_name']
             motif_clean = re.sub(r'[^\w_]', '', m)
-            tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean, table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
+            tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean,
+                                                                   table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
 
         f.write(custom_format(template, table='', motifs='\n'.join(tabs)))
 
@@ -743,7 +753,7 @@ def write_read_distribution(report_file, annotators):
     """
     Save the read distribution generated from all annotators.
     :param report_file: str - file to write the distribution to
-    :param annotators: list(Annotators) - Annotators with subdistributions
+    :param annotators: list(Annotators) - Annotators with sub-distributions
     :return: None
     """
     # get maximal read and create the empty distribution

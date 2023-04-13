@@ -154,10 +154,10 @@ if __name__ == '__main__':
             index_rep, index_rep2 = postfilter_class.get_indexes()
 
             # write index into config back:
-            config['motifs'][i]['postfilter'][j]['index_rep'] = index_rep
+            config['motifs'][i]['postfilter'][j]['index_rep'] = index_rep + 1
 
             # deduplicated annotations (for each pair we keep only one):
-            dedup_annot = annotation.pairs_to_annotations_pick(dedup_ap[i], index_rep - 1)
+            dedup_annot = annotation.pairs_to_annotations_pick(dedup_ap[i], index_rep)
 
             # log it
             if not config['general']['quiet_mode']:
@@ -176,8 +176,17 @@ if __name__ == '__main__':
             # write it to files
             report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: Generating output files into {motif_dir}',
                            stdout_too=not config['general']['quiet_mode'])
-            report.write_all(qual_annot, primer_annot, filt_annot, dedup_ap[i], all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j,
+            report.write_all(qual_annot, primer_annot, filt_annot, all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j,
                              config['general']['quiet_mode'])
+
+        # try to get the overall nomenclature:
+        report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: Generating overall nomenclature',
+                       stdout_too=not config['general']['quiet_mode'])
+        qual_annot_all = annotation.pairs_to_annotations_pick(dedup_ap[i], None)
+        for j, pstf in enumerate(motif['postfilter']):
+            postfilter_class = postfilter.Postfilter(pstf, motif_tuple)
+            qual_annot_all, _, _ = postfilter_class.get_filtered(qual_annot_all)
+        report.write_histogram_nomenclature('%s/nomenclature.txt' % motif_dir, qual_annot_all)
 
     # -------- All_Call part of DANTE
 
@@ -197,20 +206,20 @@ if __name__ == '__main__':
             index_rep, index_rep2 = postfilter_class.get_indexes()
 
             # write index into config back:
-            config['motifs'][i]['postfilter'][j]['index_rep'] = index_rep
+            config['motifs'][i]['postfilter'][j]['index_rep'] = index_rep + 1
 
             # and strings
-            rep_seq = motif['modules'][index_rep - 1]['seq']
+            rep_seq = motif['modules'][index_rep]['seq']
             len_str = len(rep_seq.split('-')[1])
 
             # is it normal or 2-index?
             if index_rep2 is not None:
-                rep_seq = motif['modules'][index_rep2 - 1]['seq']
+                rep_seq = motif['modules'][index_rep2]['seq']
                 # len_str2 = len(rep_seq.split('-')[1])
                 continue  # don't do a thing for now
 
             # deduplicated annotations (for each pair we keep only one):
-            dedup_annot = annotation.pairs_to_annotations_pick(dedup_ap[i], index_rep - 1)
+            dedup_annot = annotation.pairs_to_annotations_pick(dedup_ap[i], index_rep)
 
             # get filtered stuff
             qual_annot, primer_annot, _ = postfilter_class.get_filtered(dedup_annot)
@@ -221,13 +230,13 @@ if __name__ == '__main__':
 
             # run inference
             inference = all_call.Inference(read_distribution, config['allcall']['param_file'], str_rep=len_str,
-                                           minl_primer1=postfilter_bases[index_rep - 2], minl_primer2=postfilter_bases[index_rep],
-                                           minl_str=postfilter_bases[index_rep - 1])
+                                           minl_primer1=postfilter_bases[index_rep - 1], minl_primer2=postfilter_bases[index_rep + 1],
+                                           minl_str=postfilter_bases[index_rep])
             file_pcolor = '%s/pcolor_%d' % (motif_dir, j + 1)
             if config['general']['quiet_mode']:
                 file_pcolor = None
             file_output = '%s/allcall_%d.txt' % (motif_dir, j + 1)
-            inference.all_call(qual_annot, primer_annot, index_rep - 1, file_pcolor, file_output, motif['full_name'])
+            inference.all_call(qual_annot, primer_annot, index_rep, file_pcolor, file_output, motif['full_name'])
 
             # write the report
             confidence = report.read_all_call('%s/allcall_%d.txt' % (motif_dir, j + 1))
@@ -235,9 +244,9 @@ if __name__ == '__main__':
                 conf, a1, a2, c1, c2, _, _, _, _ = confidence
                 if not config['general']['quiet_mode']:
                     if isinstance(a1, int) and a1 > 0:
-                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep - 1, allele=a1)
+                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep, allele=a1 - 1)
                     if isinstance(a2, int) and a2 != a1 and a2 != 0:
-                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep - 1, allele=a2)
+                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep, allele=a2 - 1)
 
     # -------- generation of reports and finalizing
 

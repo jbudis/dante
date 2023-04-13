@@ -316,21 +316,30 @@ class Annotation:
                 return primer1 and primer2, self.module_repetitions[index_str]
         return None
 
-    def get_nomenclature(self, include_flanking: bool = True) -> str:
+    def get_nomenclature(self, index_rep: int = None, index_rep2: int = None, include_flanking: bool = True) -> str:
         """
         Get HGVS nomenclature.
+        :param index_rep: int - index of the first repetition (None if include all)
+        :param index_rep2: int - index of the second repetition (None if include all)
         :param include_flanking: boolean - include flanking regions (i.e. first and last module)
         :return: str - HGVS nomenclature string
         """
         # prepare data
-        nomenclature = ''
-        if include_flanking:
+        if index_rep is not None:
+            if index_rep2 is not None:
+                data = zip([self.module_repetitions[index_rep], self.module_repetitions[index_rep2]], [self.motif[index_rep], self.motif[index_rep2]],
+                           [self.sequences_per_module[index_rep], self.sequences_per_module[index_rep2]])
+            else:
+                data = zip([self.module_repetitions[index_rep]], [self.motif[index_rep]], [self.sequences_per_module[index_rep]])
+        elif include_flanking:
             data = zip(self.module_repetitions, self.motif, self.sequences_per_module)
         else:
             data = zip(self.module_repetitions[1:-1], self.motif[1:-1], self.sequences_per_module[1:-1])
 
-        # iterate and build nomenclature string
-        for repetitions, (sequence, _), read_sequence in data:
+        # iterate and build the nomenclature string
+        nomenclatures = []
+        for repetitions, (motif_sequence, _), read_sequence in data:
+            nomenclature = ''
             if repetitions == 1:
                 if len(read_sequence) > 0:
                     nomenclature += f'{read_sequence}[1]'
@@ -338,25 +347,26 @@ class Annotation:
                 reps = 0
                 search_pos = 0
                 while True:
-                    search_found = read_sequence.find(sequence, search_pos)
+                    search_found = read_sequence.find(motif_sequence, search_pos)
                     if search_found == search_pos:
                         # regular continuation
                         reps += 1
-                        search_pos = search_found + len(sequence)
+                        search_pos = search_found + len(motif_sequence)
                     elif search_found == -1:
                         # the end, we did not find any other STRs
                         if reps > 0:
-                            nomenclature += f'{sequence}[{reps}]'
+                            nomenclature += f'{motif_sequence}[{reps}]'
                         if len(read_sequence[search_pos:]) > 0:
                             nomenclature += f'{read_sequence[search_pos:]}[1]'
                         break
                     else:
                         # some interruption
                         if reps > 0:
-                            nomenclature += f'{sequence}[{reps}]'
+                            nomenclature += f'{motif_sequence}[{reps}]'
                         if len(read_sequence[search_pos:search_found]) > 0:
                             nomenclature += f'{read_sequence[search_pos:search_found]}[1]'
                         reps = 1
-                        search_pos = search_found + len(sequence)
+                        search_pos = search_found + len(motif_sequence)
+            nomenclatures.append(nomenclature)
 
-        return nomenclature
+        return '\t'.join(nomenclatures)

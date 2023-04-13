@@ -56,7 +56,7 @@ def pairs_to_annotations_pick(annotation_pairs, index_str):
     """
     Convert an array of annotations pairs to annotation array. Leave only the more informative one.
     :param annotation_pairs: list(AnnotationPair) - annotations
-    :param index_str: int: index of the STR to look at
+    :param index_str: int: index of the STR to look at or None if we should get the whole motif into account
     :return: list(Annotation)
     """
     annotations = []
@@ -68,8 +68,12 @@ def pairs_to_annotations_pick(annotation_pairs, index_str):
         if ap.ann2 is None:
             annotations.append(ap.ann1)
             continue
-        ann1_comparison = (ap.ann1.primers(index_str), ap.ann1.module_repetitions[index_str], ap.ann1.module_bases[index_str])
-        ann2_comparison = (ap.ann2.primers(index_str), ap.ann2.module_repetitions[index_str], ap.ann2.module_bases[index_str])
+        if index_str is None:
+            ann1_comparison = (sum([1 for mr in ap.ann1.module_repetitions if mr > 0]), sum([mb for mb in ap.ann1.module_bases]))
+            ann2_comparison = (sum([1 for mr in ap.ann2.module_repetitions if mr > 0]), sum([mb for mb in ap.ann2.module_bases]))
+        else:
+            ann1_comparison = (ap.ann1.primers(index_str), ap.ann1.module_repetitions[index_str], ap.ann1.module_bases[index_str])
+            ann2_comparison = (ap.ann2.primers(index_str), ap.ann2.module_repetitions[index_str], ap.ann2.module_bases[index_str])
         if ann1_comparison > ann2_comparison:
             annotations.append(ap.ann1)
         else:
@@ -78,7 +82,8 @@ def pairs_to_annotations_pick(annotation_pairs, index_str):
     return annotations
 
 
-def remove_pcr_duplicates(annot_pairs):  # TODO make this faster/parallelize - takes too long when number of found reads is more than 10.000-100.000 (1min at 7.500, 4h at 400.000)
+# TODO make this faster/parallelize - takes too long when number of found reads is more than 10.000-100.000 (1min at 7.500, 4h at 400.000)
+def remove_pcr_duplicates(annot_pairs):
     """
     Remove PCR duplicates -- deduplicate the annotation pair list.
     :param annot_pairs: list(AnnotationPair) - list of Annotation Pairs
