@@ -1,6 +1,6 @@
 from report.ReportFiles import write_annotations, write_annotation_pairs
 from report.ReportFiles import write_summary_statistics
-from report.ReportFiles import write_histogram
+from report.ReportFiles import write_histogram, write_histogram_nomenclature
 from report.ReportFiles import write_histogram_image, write_histogram_image2d
 from report.ReportFiles import write_alignment
 from report.ReportFiles import write_report
