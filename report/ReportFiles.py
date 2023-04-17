@@ -612,12 +612,13 @@ def add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, r
     return result_table
 
 
-def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=False):
+def write_report(report_dir, motifs, output_dir, nomenclature=5, quiet=False, skip_annotations=False):
     """
     Generate and write a report.
     :param report_dir: str - dir name for reports
     :param motifs: dict - parameters of motifs
     :param output_dir: str - output directory for searching of all_call outputs
+    :param nomenclature: int - number of lines from nomenclature.txt to print
     :param quiet: boolean - fewer files on the output?
     :param skip_annotations: boolean - skip annotation generation
     :return: None
@@ -686,11 +687,11 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
                     mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight)
                     if motif_name in mcs:
                         ms[motif_name].append(m)
-                        alignments[motif_name].append(a)
+                        alignments[motif_name][1].append(a[1])
                     else:
                         mcs[motif_name] = mc
                         ms[motif_name] = [m]
-                        alignments[motif_name] = [a]
+                        alignments[motif_name] = (a[0], [a[1]])
 
                     mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, static=True)
                     if mc not in mcs_static:
@@ -727,7 +728,33 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
         for motif in sorted(motifs, key=lambda x: x['full_name']):
             m = motif['full_name']
             motif_clean = re.sub(r'[^\w_]', '', m)
+
+            with open('%s/%s/nomenclature.txt' % (report_dir, m), 'r') as noms:
+                lines = []
+                for _ in range(nomenclature):
+                    line = noms.readline()
+                    if line == '' or line is None:
+                        break
+
+                    index = line.index('\t')
+                    motif_strings = line[index + 1:].split('\t')
+                    for _ in range(5 - len(motif_strings)):
+                        motif_strings.append('')
+
+                    if 'chromosome_version' in motif and 'ref_start' in motif and 'ref_end' in motif:
+                        chr_string = f'{motif["chromosome_version"]}:g.{motif["ref_start"]}_{motif["ref_end"]}'
+                        nom_row = report.html_templates.nomenclature_string.\
+                            format(count=line[:index] + 'x', ref=chr_string, s1=motif_strings[0], s2=motif_strings[1],
+                                   s3=motif_strings[2], s4=motif_strings[3], s5=motif_strings[4])
+                        lines.append(nom_row)
+                    else:
+                        nom_row = report.html_templates.nomenclature_string. \
+                            format(count=line[:index] + 'x', ref='', s1=motif_strings[0], s2=motif_strings[1],
+                                   s3=motif_strings[2], s4=motif_strings[3], s5=motif_strings[4])
+                        lines.append(nom_row)
+
             tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean,
+                                                                   nomenclatures='\n'.join(lines),
                                                                    table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
 
         f.write(custom_format(template, table='', motifs='\n'.join(tabs)))
@@ -742,10 +769,10 @@ def write_report(report_dir, motifs, output_dir, quiet=False, skip_annotations=F
     for motif in alignments.keys():
         template_alignments = open('%s/alignments.html' % script_dir, 'r').read()
         template_alignments = custom_format(template_alignments, sample=motif,
-                                            motif_desc='%s &ndash; %s' % (motif_name, description))
+                                            motif_desc=alignments[motif][0])
 
         with open('%s/%s/alignments.html' % (report_dir, motif), 'w') as f:
-            f.write(custom_format(template_alignments, alignments='\n'.join(alignments[motif])))
+            f.write(custom_format(template_alignments, alignments='\n'.join(alignments[motif][1])))
 
     # copy javascript libraries
     if not quiet:

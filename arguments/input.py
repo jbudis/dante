@@ -44,6 +44,7 @@ def load_arguments():
         options.add_argument('--start-motif', type=int, help='Starting motif index (from 0). Default=0.', default=0)
         options.add_argument('--max-motifs', type=int, help='Maximal number of motifs to load. Default: All', default=None)
         options.add_argument('--cpu', type=int, help='Overwrite config number of CPUs. Default: as in config file', default=None)
+        options.add_argument('--nomenclatures', type=int, help='Number of nomenclature strings to add to reports', default=5)
         # options.add_argument('--skip-annotation', action='store_true', help='Skip annotation and do only inference. Debug purposes only.')
 
         args = parser.parse_args()
@@ -71,6 +72,9 @@ def load_arguments():
     # change cpu levels
     if args.cpu is not None:
         config['general']['cpu'] = args.cpu
+    # change nomenclature counts
+    if args.nomenclatures is not None:
+        config['general']['nomenclatures'] = args.nomenclatures
     # adjust number of motifs
     config['motifs'] = config['motifs'][args.start_motif:]
     if args.max_motifs is not None:
