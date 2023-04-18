@@ -71,16 +71,12 @@ nomenclature_string = """
 <tr>
     <td>{count}</td>
     <td>{ref}</td>
-    <td>{s1}</td>
-    <td>{s2}</td>
-    <td>{s3}</td>
-    <td>{s4}</td>
-    <td>{s5}</td>
+    {parts}
 </tr>
 """
 
 motif_summary = """
-<div class="tabcontent" id="{motif_name}" style="display: none">
+<div class="tabcontent" id="{motif_id}" style="display: none">
 <h2 class="summary_nomenclatures">Nomenclatures</h2>
 <table class="nomtg">
     <tbody>
@@ -88,7 +84,7 @@ motif_summary = """
     </tbody>
 </table>
 <h2 class="summary">Summary table</h2>
-<table class="tg" id="tg-{motif_tg}">
+<table class="tg" id="tg-{motif_id}">
     <thead>
         <tr>
             <th class="tg-s6z2" rowspan="2">Motif</th>
@@ -119,7 +115,7 @@ motif_summary = """
 
 <script>
     $(document).ready( function () {{
-    $('#tg-{motif_tg}').DataTable();
+    $('#tg-{motif_id}').DataTable();
 }} );
 </script>
 <p><a href="#content">Back to content</a></p>
@@ -438,7 +434,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     # prepare and generate alignments
     sequence, subpart = highlight_subpart(sequence, highlight)
     motif = '%s &ndash; %s' % (motif_name, description)
-    motif_name = '%s_%s' % (motif_name, ','.join(map(str, highlight)) if highlight is not None else 'mot')
+    motif_name = '%s_%s' % (motif_name.replace('/', '_'), ','.join(map(str, highlight)) if highlight is not None else 'mot')
     motif_clean = re.sub(r'[^\w_]', '', motif_name)
     align_html_a1 = ''
     align_html_a2 = ''
@@ -465,83 +461,31 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
         errors = '%.0f%%' % (postfilter['max_errors'] * 100)
 
     # return content and picture parts:
-    if static:
-        if repetition is not None:
-            # if postfilter['index_rep2'] != 'no':
-            #     reps = base64.b64encode(open(repetition, "rb").read())
-            #     reps = reps.decode("utf-8")
-            # else:
-            #     reps = open(repetition, 'r').read()
+    motif_templates = {'static': {'pcol': motif_stringb64_static, 'no-pcol': motif_stringb64_reponly_static},
+                       'dynamic': {'pcol': motif_stringb64, 'no-pcol': motif_stringb64_reponly}}
 
-            reps = open(repetition, 'r').read()
-            align_html = generate_alignment(motif_clean, alignment, motif_clean.split('_')[0])
-            filt_align_html = generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
-                                                 'Partial reads alignment visualization')
+    if repetition is not None:
+        reps = open(repetition, 'r').read()
+        align_html = generate_alignment(motif_clean, alignment, motif_clean.split('_')[0])
+        filt_align_html = generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
+                                             'Partial reads alignment visualization')
+        # select template
+        motif_template = motif_templates['static' if static else 'dynamic']['no-pcol' if pcolor is None else 'pcol']
 
-            if pcolor is not None:
-                # pcol = base64.b64encode(open(pcolor, "rb").read())
-                # pcol = pcol.decode("utf-8")
-                pcol = open(pcolor, 'r').read()
-                return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
-                    motif_stringb64_static.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                  motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
-                                                  motif=motif, motif_reps=reps, result=result, motif_pcolor=pcol,
-                                                  alignment=f'{motif_clean.split("_")[0]}/alignments.html',
-                                                  sequence=sequence, errors=errors), \
-                    (motif,
-                     alignment_string.format(sequence=sequence,
-                                             alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
-            else:
-                return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
-                    motif_stringb64_reponly_static.format(post_bases=postfilter['bases'],
-                                                          post_reps=postfilter['repetitions'],
-                                                          motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
-                                                          motif=motif, motif_reps=reps, result=result,
-                                                          alignment=f'{motif_clean.split("_")[0]}/alignments.html',
-                                                          sequence=sequence, errors=errors), \
-                    (motif,
-                     alignment_string.format(sequence=sequence,
-                                             alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
+        # read pcolor if available
+        pcol = '' if pcolor is None else open(pcolor, 'r').read()
 
-        else:
-            return content_string_empty.format(motif_name=motif_name, motif=motif), \
-                motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors), \
-                (motif, '')
+        # return filled valid template
+        return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
+            motif_template.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'], motif_name=motif_clean,
+                                  motif_id=motif_clean.split('_')[0], motif=motif, motif_reps=reps, result=result, motif_pcolor=pcol,
+                                  alignment=f'{motif_name.split("_")[0]}/alignments.html', sequence=sequence, errors=errors), \
+            (motif, alignment_string.format(sequence=sequence, alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
     else:
-        if repetition is not None:
-            reps = open(repetition, 'r').read()
-            align_html = generate_alignment(motif_clean, alignment, motif_clean.split('_')[0])
-            filt_align_html = generate_alignment(motif_clean + '_filtered', filtered_alignment,
-                                                 motif_clean.split('_')[0], 'Filtered reads alignment visualization')
-
-            if pcolor is not None:
-                pcol = open(pcolor, 'r').read()
-                return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
-                    motif_stringb64.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                           motif_name=motif_clean, motif_id=motif_clean.split('_')[0], motif=motif,
-                                           motif_reps=reps, result=result, motif_pcolor=pcol,
-                                           alignment=f'{motif_clean.split("_")[0]}/alignments.html',
-                                           sequence=sequence, errors=errors), \
-                    (motif,
-                     alignment_string.format(sequence=sequence,
-                                             alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
-            else:
-                return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
-                    motif_stringb64_reponly.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                                   motif_name=motif_clean, motif_id=motif_clean.split('_')[0],
-                                                   motif=motif, motif_reps=reps, result=result,
-                                                   alignment=f'{motif_clean.split("_")[0]}/alignments.html',
-                                                   sequence=sequence, errors=errors), \
-                    (motif,
-                     alignment_string.format(sequence=sequence,
-                                             alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
-
-        else:
-            return content_string_empty.format(motif_name=motif_name, motif=motif), \
-                motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
-                                          motif_name=motif_name, motif=motif, sequence=sequence, errors=errors), \
-                (motif, '')
+        return content_string_empty.format(motif_name=motif_clean.split('_')[0], motif=motif), \
+            motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                      motif_name=motif_clean, motif=motif, sequence=sequence, errors=errors), \
+            (motif, '')
 
 
 def generate_alignment(motif: str, alignment_file: str, motif_id: str, display_text: str = 'Click to toggle alignment visualization'):

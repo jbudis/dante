@@ -19,7 +19,7 @@ allcall:                            # Parameters of genotypization
   prob_background: 0.001            # Probability of background "noise" reads.
 
 inputs:                       # List of input files. Each new entry starts with dash "-".
-  - path: example_R1.fastq.gz # Path to a input file. Use "sys.stdin" for reading from the standard input (in that case "filetype" must be filled).
+  - path: example_R1.fastq.gz # Path to an input file. Use "sys.stdin" for reading from the standard input (in that case "filetype" must be filled).
     filetype: infer           # File type of this input file. If not provided, it will be inferred from the file suffix.
     max_reads: all            # How many reads to process from this input file. Use "all" for processing of whole file.
   - path: example_R2.fastq.gz

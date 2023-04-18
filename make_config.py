@@ -1,9 +1,3 @@
-# imports from dante files
-from arguments.input import nonempty_file
-from arguments import yaml_reader
-from prefiltering.SimpleFilter import base_mapping
-
-# imports from global libraries
 import argparse
 import pandas as pd
 import ensembl_rest
@@ -14,6 +8,11 @@ import textwrap
 from dataclasses import dataclass
 import math
 from copy import deepcopy
+
+# imports from dante files
+from arguments.input import nonempty_file
+from arguments import yaml_reader
+from prefiltering.SimpleFilter import base_mapping
 
 
 @dataclass
@@ -723,7 +722,7 @@ if __name__ == "__main__":
         nomenclature = rows[args.nomenclature_column]
         disease = rows['disease']
         gene = rows['gene' if 'gene' in rows else 'Gene']
-        description = f'{rows["description"]} (gene {gene})'
+        description = f'{rows["description"]} (gene: {gene})'
 
         # skip empty nomenclature
         if str(nomenclature) == 'nan':
@@ -733,8 +732,7 @@ if __name__ == "__main__":
             continue
 
         # parse nomenclature (get information from nomenclature)
-        ref_sequence, repetitions, chromosome, chromosome_version, ref_start, ref_end = parse_nomenclature(nomenclature,
-                                                                                                           args.flank)
+        ref_sequence, repetitions, chromosome, chromosome_version, ref_start, ref_end = parse_nomenclature(nomenclature, args.flank)
 
         # print motif name
         if verbose:
@@ -796,7 +794,7 @@ if __name__ == "__main__":
                 right_flank = seq_new[-args.flank:]
 
         # make motif
-        motif = make_motif(disease, description, new_repetitions, left_flank, right_flank,
+        motif = make_motif(description, disease, new_repetitions, left_flank, right_flank,
                            chromosome, chromosome_version, ref_start, ref_end, args)
 
         # append postfilter values

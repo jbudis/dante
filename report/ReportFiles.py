@@ -759,7 +759,6 @@ def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5,
     tabs = []
 
     with open('%s/report.html' % report_dir, 'w') as f:
-        # f.write(custom_format(template, motifs_content='\n'.join(mcs), table='\n'.join(rows), motifs='\n'.join(ms)))
         contents_table = report.html_templates.contents.format(table='\n'.join(sorted(mcs.values())))
         template = custom_format(template, motifs_content=contents_table + '\n' + report.html_templates.make_datatable_string)
 
@@ -769,29 +768,29 @@ def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5,
 
             with open('%s/%s/nomenclature.txt' % (report_dir, motif_name), 'r') as noms:
                 lines = []
-                for _ in range(nomenclature):
-                    line = noms.readline()
+                for line in noms:
                     if line == '' or line is None:
                         break
 
-                    index = line.index('\t')
-                    motif_strings = line[index + 1:].split('\t')
-                    for _ in range(5 - len(motif_strings)):
-                        motif_strings.append('')
+                    line_split = line.split('\t')
+                    motif_parts = [f'<td>{s}</td>' for s in line_split[1:]]
 
+                    # replace chromosome_version if not available
+                    if 'chromosome_version' not in motif and 'chromosome' in motif:
+                        motif['chromosome_version'] = motif['chromosome']
+                    # build reference string
+                    ref = ''
                     if 'chromosome_version' in motif and 'ref_start' in motif and 'ref_end' in motif:
-                        chr_string = f'{motif["chromosome_version"]}:g.{motif["ref_start"]}_{motif["ref_end"]}'
-                        nom_row = report.html_templates.nomenclature_string.\
-                            format(count=line[:index] + 'x', ref=chr_string, s1=motif_strings[0], s2=motif_strings[1],
-                                   s3=motif_strings[2], s4=motif_strings[3], s5=motif_strings[4])
-                        lines.append(nom_row)
-                    else:
-                        nom_row = report.html_templates.nomenclature_string. \
-                            format(count=line[:index] + 'x', ref='', s1=motif_strings[0], s2=motif_strings[1],
-                                   s3=motif_strings[2], s4=motif_strings[3], s5=motif_strings[4])
-                        lines.append(nom_row)
+                        ref = f'{motif["chromosome_version"]}:g.{motif["ref_start"]}_{motif["ref_end"]}'
 
-            tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean,
+                    nom_row = report.html_templates.nomenclature_string.format(count=line_split[0] + 'x', ref=ref, parts='\n    '.join(motif_parts))
+                    lines.append(nom_row)
+
+                    # end?
+                    if len(lines) >= nomenclature:
+                        break
+
+            tabs.append(report.html_templates.motif_summary.format(motif_id=motif_clean,
                                                                    nomenclatures='\n'.join(lines), table='\n'.join(rows[motif_name]),
                                                                    motifs='\n'.join(ms[motif_name])))
 
