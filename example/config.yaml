@@ -9,6 +9,10 @@ general:                    # General parameters
   profiler: False           # Use time profiler?
   output_all: False         # Output all reads, even pre-filtered. Warning: the output files may be quite long if turned on.
   verbosity: 1              # How verbose Dante is. Use integers 0-3.
+  report_every: 1000000     # How often report progress (every this number of reads). Use 0 to not report progress at all (good for long files).
+  quiet_mode: False         # report only the bare minimum of outputs and no figures (use for many input motifs)
+  skip_alignments: False    # If True, skips the alignment generation at all.
+  gzip_outputs: infer       # If True, gzips the bulky outputs (alignments, annotations). If 'infer', True if mean read length is >= 1000.
 
 allcall:                            # Parameters of genotypization
   param_file: miseq_params.txt      # Parameter file for genotyping. Absolute or relative from current directory.

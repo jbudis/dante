@@ -44,7 +44,6 @@ def load_arguments():
         options.add_argument('--start-motif', type=int, help='Starting motif index (from 0). Default=0.', default=0)
         options.add_argument('--max-motifs', type=int, help='Maximal number of motifs to load. Default: All', default=None)
         options.add_argument('--cpu', type=int, help='Overwrite config number of CPUs. Default: as in config file', default=None)
-        # options.add_argument('--skip-annotation', action='store_true', help='Skip annotation and do only inference. Debug purposes only.')
 
         args = parser.parse_args()
     except argparse.ArgumentTypeError as e:
@@ -88,9 +87,6 @@ def load_arguments():
     except arguments.yaml_reader.ParameterException as e:
         print("ParameterException: '%s'" % e.message)
         exit(-1)
-
-    # skip annotations
-    # config['skip_annotation'] = args.skip_annotation
 
     return config
 

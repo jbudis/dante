@@ -115,7 +115,9 @@ if __name__ == '__main__':
                            stdout_too=not config['general']['quiet_mode'])
 
     # write read distribution
-    report.write_read_distribution('%s/read_distr.npy' % config['general']['output_dir'], readers)
+    mean_length = report.write_read_distribution('%s/read_distr.npy' % config['general']['output_dir'], readers)
+    if config['general']['gzip_outputs'] == 'infer':
+        config['general']['gzip_outputs'] = mean_length >= 1000
 
     # write stats
     for i, (motif, annot) in enumerate(zip(config['motifs'], annotations)):
@@ -137,8 +139,8 @@ if __name__ == '__main__':
             if not os.path.exists(motif_dir):
                 os.makedirs(motif_dir)
 
-            report.write_annotation_pairs('%s/annotation_pairs.txt' % motif_dir, dedup_ap[i])
-            report.write_annotation_pairs('%s/annotation_pairs_duplicates.txt' % motif_dir, duplicates)
+            report.write_annotation_pairs('%s/annotation_pairs.txt' % motif_dir, dedup_ap[i], zip_it=config['general']['gzip_outputs'])
+            report.write_annotation_pairs('%s/annotation_pairs_duplicates.txt' % motif_dir, duplicates, zip_it=config['general']['gzip_outputs'])
 
         # log it
         report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: {len(annot):8d} reads -- '
@@ -177,7 +179,7 @@ if __name__ == '__main__':
             report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: Generating output files into {motif_dir}',
                            stdout_too=not config['general']['quiet_mode'])
             report.write_all(qual_annot, primer_annot, filt_annot, all_reads, motif_dir, motif['modules'], index_rep, index_rep2, j,
-                             config['general']['quiet_mode'])
+                             config['general']['quiet_mode'], zip_it=config['general']['gzip_outputs'])
 
         # try to get the overall nomenclature:
         report.log_str(f'Motif {shorten_str(motif["full_name"], MOTIF_PRINT_LEN):<{MOTIF_PRINT_LEN}s}: Generating overall nomenclature',
@@ -244,16 +246,16 @@ if __name__ == '__main__':
                 conf, a1, a2, c1, c2, _, _, _, _ = confidence
                 if not config['general']['quiet_mode']:
                     if isinstance(a1, int) and a1 > 0:
-                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep, allele=a1 - 1)
+                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a1), qual_annot, index_rep, allele=a1)
                     if isinstance(a2, int) and a2 != a1 and a2 != 0:
-                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep, allele=a2 - 1)
+                        report.write_alignment('%s/alignment_%d_a%d.fasta' % (motif_dir, j + 1, a2), qual_annot, index_rep, allele=a2)
 
     # -------- generation of reports and finalizing
 
     # generate report and output files for whole run
     report.log_str('Generating final report')
     report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'], config['general']['quiet_mode'],
-                        config['general']['skip_annotations'])
+                        config['general']['skip_alignments'])
 
     # print the time of the end:
     end_time = datetime.now()

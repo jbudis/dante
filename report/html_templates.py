@@ -1,7 +1,5 @@
-import base64
+import gzip
 import numpy as np
-import json
-import os
 import re
 
 contents = """
@@ -422,6 +420,19 @@ def generate_row(motif, sequence, confidence, postfilter, reads_blue, reads_grey
                                  post_errors=errors)
 
 
+def get_alignment_name(alignment_file: str, allele: int) -> str:
+    """
+    Get alignment file of subpart of the alignment with allele count specified.
+    :param alignment_file: str - alignment file name
+    :param allele: int - allele repetition count
+    :return: str - alignment file name for the subpart of alignment
+    """
+    # find where is .fasta
+    fasta_index = alignment_file.rfind('.fasta')
+    # insert '_aX' before .fasta
+    return alignment_file[:fasta_index] + '_a' + str(allele) + alignment_file[fasta_index:]
+
+
 def generate_motifb64(motif_name, description, sequence, repetition, pcolor, alignment, filtered_alignment, confidence,
                       postfilter, highlight=None, static=False):
     """
@@ -436,6 +447,7 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     :param confidence: tuple - motif confidences and allele predictions
     :param postfilter: dict - postfilter dict from config
     :param highlight: list(int)/None - which part of seq to highlight
+    :param static: bool - generate static code?
     :return: (str, str) - content and main part of the html report for motifs
     """
     # prepare and generate alignments
@@ -454,25 +466,13 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
         else:
             result = '%2s (%5.1f%%) %2s (%5.1f%%) total %5.1f%%' % (str(a1), c1 * 100, str(a2), c2 * 100, c * 100)
             if alignment is not None:
-                align_prefix = alignment[:alignment.rfind('.')]
-
-                if static:
-                    align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
-                                                       '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
-                                                       "Allele 1 (%2s) alignment visualization" % str(a1), static=True)
-                    if a1 != a2:
-                        align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
-                                                           '%s_a%s.fasta' % (align_prefix, str(a2)),
-                                                           motif_clean.split('_')[0],
-                                                           "Allele 2 (%2s) alignment visualization" % str(a2), static=True)
-                else:
-                    align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
-                                                       '%s_a%s.fasta' % (align_prefix, str(a1)), motif_clean.split('_')[0],
-                                                       "Allele 1 (%2s) alignment visualization" % str(a1))
-                    if a1 != a2:
-                        align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
-                                                           '%s_a%s.fasta' % (align_prefix, str(a2)), motif_clean.split('_')[0],
-                                                           "Allele 2 (%2s) alignment visualization" % str(a2))
+                align_html_a1 = generate_alignment('%s_%s' % (motif_clean, str(a1)),
+                                                   get_alignment_name(alignment, a1), motif_clean.split('_')[0],
+                                                   'Allele 1 (%2s) alignment visualization' % str(a1), static=static)
+                if a1 != a2:
+                    align_html_a2 = generate_alignment('%s_%s' % (motif_clean, str(a2)),
+                                                       get_alignment_name(alignment, a2), motif_clean.split('_')[0],
+                                                       'Allele 2 (%2s) alignment visualization' % str(a2), static=static)
 
     # errors:
     errors = postfilter['max_errors']
@@ -489,9 +489,9 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
             #     reps = open(repetition, 'r').read()
 
             reps = open(repetition, 'r').read()
-            align_html = '' if alignment is None else generate_alignment(motif_clean, alignment, motif_clean.split('_')[0], static=True)
-            filt_align_html = '' if filtered_alignment is None else generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
-                                                                                       'Partial reads alignment visualization', static=True)
+            align_html = generate_alignment(motif_clean, alignment, motif_clean.split('_')[0], static=True)
+            filt_align_html = generate_alignment(motif_clean + '_filtered', filtered_alignment, motif_clean.split('_')[0],
+                                                 'Partial reads alignment visualization', static=True)
 
             if pcolor is not None:
                 # pcol = base64.b64encode(open(pcolor, "rb").read())
@@ -545,17 +545,22 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
                                           motif_name=motif_name, motif=motif, sequence=sequence, errors=errors)
 
 
-def generate_alignment(motif, alignment_file, motif_id, display_text="Click to toggle alignment visualization", static=False):
+def generate_alignment(motif: str, alignment_file: str, motif_id: str, display_text: str = 'Click to toggle alignment visualization',
+                       static: bool = False):
     """
     Generate HTML code for the fancy alignment.
     :param motif: str - name of the motif
     :param alignment_file: str - filename of the alignment file
     :param motif_id: str - motif identification
     :param display_text: str - string to display when the alignment is hidden
+    :param static: bool: generate static file (slightly different template)
     :return: str - code of the fancy alignment
     """
+    if alignment_file is None:
+        return ''
+
     try:
-        with open(alignment_file) as f:
+        with gzip.open(alignment_file, 'rt') if alignment_file.endswith('.gz') else open(alignment_file) as f:
             string = f.read()
         debug = string.find('#')
 
@@ -563,5 +568,5 @@ def generate_alignment(motif, alignment_file, motif_id, display_text="Click to t
             return align_vis_static.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
         else:
             return align_vis.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
-    except (IOError, TypeError):
-        return ""
+    except (IOError, TypeError, AttributeError):
+        return ''
