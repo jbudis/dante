@@ -644,7 +644,7 @@ def write_report(report_dir, motifs, output_dir, nomenclature=5, quiet=False, sk
     with open(all_profiles, 'w') as pf, open(all_true, 'w') as tf:
         for m in motifs:
             seq = get_seq_from_module(m['modules'])
-            motif_name = m['full_name']
+            motif_name = m['full_name'].replace('/', '_')
             description = m['description']
             for i, postfilter in enumerate(m['postfilter']):
                 # read files
@@ -726,10 +726,10 @@ def write_report(report_dir, motifs, output_dir, nomenclature=5, quiet=False, sk
         template = custom_format(template, motifs_content=contents_table + '\n' + report.html_templates.make_datatable_string)
 
         for motif in sorted(motifs, key=lambda x: x['full_name']):
-            m = motif['full_name']
-            motif_clean = re.sub(r'[^\w_]', '', m)
+            motif_name = motif['full_name'].replace('/', '_')
+            motif_clean = re.sub(r'[^\w_]', '', motif_name)
 
-            with open('%s/%s/nomenclature.txt' % (report_dir, m), 'r') as noms:
+            with open('%s/%s/nomenclature.txt' % (report_dir, motif_name), 'r') as noms:
                 lines = []
                 for _ in range(nomenclature):
                     line = noms.readline()
@@ -754,8 +754,8 @@ def write_report(report_dir, motifs, output_dir, nomenclature=5, quiet=False, sk
                         lines.append(nom_row)
 
             tabs.append(report.html_templates.motif_summary.format(motif_name=motif_clean, motif_tg=motif_clean,
-                                                                   nomenclatures='\n'.join(lines),
-                                                                   table='\n'.join(rows[m]), motifs='\n'.join(ms[m])))
+                                                                   nomenclatures='\n'.join(lines), table='\n'.join(rows[motif_name]),
+                                                                   motifs='\n'.join(ms[motif_name])))
 
         f.write(custom_format(template, table='', motifs='\n'.join(tabs)))
 

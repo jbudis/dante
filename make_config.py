@@ -722,9 +722,8 @@ if __name__ == "__main__":
             print(f'Progress: {i:6d}/{len(table):6d}')
         nomenclature = rows[args.nomenclature_column]
         disease = rows['disease']
-        description = rows['description']
         gene = rows['gene' if 'gene' in rows else 'Gene']
-        description = f'{description} (gene:{gene})'
+        description = f'{rows["description"]} (gene {gene})'
 
         # skip empty nomenclature
         if str(nomenclature) == 'nan':
