@@ -254,7 +254,8 @@ if __name__ == '__main__':
 
     # generate report and output files for whole run
     report.log_str('Generating final report')
-    report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'], config['general']['quiet_mode'],
+    report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'],
+                        config['general']['nomenclatures'], config['general']['quiet_mode'],
                         config['general']['skip_alignments'])
 
     # print the time of the end:

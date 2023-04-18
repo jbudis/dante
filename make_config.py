@@ -243,7 +243,7 @@ def parse_nomenclature(nc, flank):
     end_pos += flank
     ref_seq = get_ref_sequence(chromosome, start_pos, end_pos)
 
-    return ref_seq, repetitive, chromosome, start_pos, end_pos
+    return ref_seq, repetitive, chromosome, name, start_pos, end_pos
 
 
 def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, verbose=False):
@@ -278,7 +278,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
                 if verbose:
                     print(f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
                     print(f'       Attempt to repair by increasing number of previous repetitions')
-                # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence: GCAGCAGCAGCAATCATC, repetitions after repair: (GCA - 4, ATC - 2)
+                # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence: GCAGCAGCAGCAATCATC,
+                # repetitions after repair: (GCA - 4, ATC - 2)
                 prev = rep_list[i - 1]
                 while re.match(get_regexp(prev.seq), sequence):
                     sequence = sequence[len(prev.seq):]
@@ -294,7 +295,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
                     if verbose:
                         print(f'       Attempt to repair by skipping this repetition')
                     # check if sequence match sequence from second repetition
-                    # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence ATCATC, repetitions after repair: (GCA - 0, ATC - 2)
+                    # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence ATCATC,
+                    # repetitions after repair: (GCA - 0, ATC - 2)
                     second_rep = rep_list[1]
                     if re.match(get_regexp(second_rep.seq), sequence):
                         repetition.num = 0
@@ -303,7 +305,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
                 if verbose:
                     print(f'       Attempt to repair by ignoring first nucleotides in repetitive sequence and adding them to flank')
                 # check if sequence from first repetitions is in sequence
-                # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence "TCT"GCAGCAATCATC, after_repair: left_flank = left_flank + TCT
+                # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence "TCT"GCAGCAATCATC,
+                # after_repair: left_flank = left_flank + TCT
                 temp = re.search(get_regexp(rep_seq), sequence)
                 if temp is not None:
                     ind = temp.start()
@@ -330,7 +333,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
                     if verbose:
                         print(f'Error: Repetitive sequence {rep_seq} in {rep_list} does not match sequence from reference genome')
                         print(f'       Attempt to repair by decreasing number of this repetition')
-                    # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAATCATC, repetitions after repair: (GCA - 1, ATC - 2)
+                    # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAATCATC,
+                    # repetitions after repair: (GCA - 1, ATC - 2)
                     repetition.num = r
                     break
 
@@ -338,7 +342,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
         if verbose:
             print(f'Error: Repetitive sequence {rep_list} does not match sequence from reference genome')
             print(f'       Attempt to repair by increasing number of previous repetitions')
-        # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAGCAATCATCATCATC, repetitions after repair: (GCA - 2, ATC - 4)
+        # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAGCAATCATCATCATC,
+        # repetitions after repair: (GCA - 2, ATC - 4)
         last = rep_list[-1]
         while re.match(get_regexp(last.seq), sequence):
             sequence = sequence[len(last.seq):]
@@ -349,7 +354,8 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
     if sequence != '':
         if verbose:
             print(f'       Attempt to repair failed. Adding nucleotides to right flank sequence')
-        # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAGCAATCATC"CTG", after repair: right_flank = CTG + right_flank
+        # e.g. repetitions: (GCA - 2, ATC - 2), ref_sequence GCAGCAATCATC"CTG",
+        # after repair: right_flank = CTG + right_flank
         seq_right = sequence + seq_right
 
     return seq_left, seq_right, rep_list, error
@@ -420,9 +426,11 @@ def compare_sequences(ref_seq, rep_list, flank, max_errors, skip_check=False, ve
 
     error = False
     if not skip_check:
-        seq_left, seq_right, rep_list, error = check_repetitions(current_seq, seq_left, seq_right, rep_list, max_errors, verbose)
+        seq_left, seq_right, rep_list, error = check_repetitions(current_seq, seq_left, seq_right,
+                                                                 rep_list, max_errors, verbose)
 
-    # move repetitive sequence from flank sequence to list of repetitive sequences, if repetitive sequence is found in flank region
+    # move repetitive sequence from flank sequence to list of repetitive sequences,
+    # if repetitive sequence is found in flank region
     seq_left, rep_list = check_left_flank(seq_left, rep_list, verbose)
     seq_right, rep_list = check_right_flank(seq_right, rep_list, verbose)
 
@@ -488,7 +496,8 @@ def single_filter(rep_list, min_flank, min_rep):
             # bases after
             write_bases_repetitions(bases, repetitions, rep_list, min_flank, i + 1, False)
 
-            postfilters.append({'bases': ','.join(map(str, bases)), 'repetitions': ','.join(map(str, repetitions)), 'index_rep': i + 1})
+            postfilters.append({'bases': ','.join(map(str, bases)), 'repetitions': ','.join(map(str, repetitions)),
+                                'index_rep': i + 1})
             prefilters.append(str(repetitions[i]) + '-' + seq)
 
     return prefilters, postfilters
@@ -527,7 +536,8 @@ def complex_filter(rep_list, min_flank, min_rep, indexes):
         # bases after
         write_bases_repetitions(bases, repetitions, rep_list, min_flank, second + 1, False)
 
-        postfilters.append({'bases': ','.join(map(str, bases)), 'repetitions': ','.join(map(str, repetitions)), 'index_rep': first + 1, 'index_rep2': second + 1})
+        postfilters.append({'bases': ','.join(map(str, bases)), 'repetitions': ','.join(map(str, repetitions)),
+                            'index_rep': first + 1, 'index_rep2': second + 1})
 
     return postfilters
 
@@ -618,7 +628,7 @@ def make_modules(seq_left, seq_right, rep_list, rep_type):
     return modules
 
 
-def make_motif(desc, full_name, rep_list, seq_left, seq_right, chromosome, start, end, args):
+def make_motif(desc, full_name, rep_list, seq_left, seq_right, chromosome, chromosome_version, start, end, args):
     """
     Make motif for config file.
     :param desc: str - motif description
@@ -633,14 +643,16 @@ def make_motif(desc, full_name, rep_list, seq_left, seq_right, chromosome, start
     :return: motif - dictionary
     """
 
-    motif = {'description': desc, 'full_name': full_name, 'chromosome': 'chr' + chromosome, 'ref_start': start,
-             'ref_end': end, 'include_unmapped': args.include_unmapped}
+    motif = {'description': desc, 'full_name': full_name, 'chromosome': 'chr' + chromosome,
+             'chromosome_version': chromosome_version, 'ref_start': start, 'ref_end': end,
+             'include_unmapped': args.include_unmapped}
 
     modules = make_modules(seq_left, seq_right, rep_list, args.seq)
 
     motif['modules'] = modules
 
-    motif['prefilter'], motif['postfilter'] = make_filters(modules, args.min_flank_post, args.min_flank_post_complex, args.min_rep_post, not args.prefilter)
+    motif['prefilter'], motif['postfilter'] = make_filters(modules, args.min_flank_post, args.min_flank_post_complex,
+                                                           args.min_rep_post, not args.prefilter)
 
     if args.min_mapq is not None:
         motif['min_mapq'] = args.min_mapq
@@ -710,9 +722,8 @@ if __name__ == "__main__":
             print(f'Progress: {i:6d}/{len(table):6d}')
         nomenclature = rows[args.nomenclature_column]
         disease = rows['disease']
-        description = rows['description']
         gene = rows['gene' if 'gene' in rows else 'Gene']
-        description = f'{description} (gene:{gene})'
+        description = f'{rows["description"]} (gene {gene})'
 
         # skip empty nomenclature
         if str(nomenclature) == 'nan':
@@ -722,7 +733,8 @@ if __name__ == "__main__":
             continue
 
         # parse nomenclature (get information from nomenclature)
-        ref_sequence, repetitions, chromosome, ref_start, ref_end = parse_nomenclature(nomenclature, args.flank)
+        ref_sequence, repetitions, chromosome, chromosome_version, ref_start, ref_end = parse_nomenclature(nomenclature,
+                                                                                                           args.flank)
 
         # print motif name
         if verbose:
@@ -743,7 +755,9 @@ if __name__ == "__main__":
             continue
 
         # check if reference sequence and repetitive sequence are same (repair repetitive sequence if they are not same)
-        new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, args.flank, args.max_errors, args.skip_check, verbose)
+        new_repetitions, left_flank, right_flank, seq_error = compare_sequences(ref_sequence, repetitions, args.flank,
+                                                                                args.max_errors, args.skip_check,
+                                                                                verbose)
 
         new_errors = False
         under_half = False
@@ -782,7 +796,8 @@ if __name__ == "__main__":
                 right_flank = seq_new[-args.flank:]
 
         # make motif
-        motif = make_motif(disease, description, new_repetitions, left_flank, right_flank, chromosome, ref_start, ref_end, args)
+        motif = make_motif(disease, description, new_repetitions, left_flank, right_flank,
+                           chromosome, chromosome_version, ref_start, ref_end, args)
 
         # append postfilter values
         if args.postfilter is not None and ':' in args.postfilter:
@@ -816,4 +831,5 @@ if __name__ == "__main__":
     with open(args.config_file, 'w') as file:
         yaml.dump(config, file)
 
-    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases, args.max_errors, er_in_table, er_empty_nom, args.flank, len(motifs), verbose)
+    print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases,
+                 args.max_errors, er_in_table, er_empty_nom, args.flank, len(motifs), verbose)
