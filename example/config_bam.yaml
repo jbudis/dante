@@ -1,0 +1,96 @@
+# Example parameters for DANTE = "Da Amazing NucleoTide Exposer"
+# If a parameter is missing in a configuration file, it is supplied from a default file distributed with Dante in "input_data/default.yaml"
+# Parameters marked as "infer" are inferred during program run (not required)
+---
+general:                    # General parameters
+  output_dir: report        # Directory path for all results, created if it does not exist. Absolute or relative from current working directory.
+  cpu: 8                    # Number of processes to use in the analysis.
+  stranded: both            # Which strand(s) of reads to use. Accepted: "yes"/"reverse"/"both".
+  profiler: False           # Use time profiler?
+  output_all: False         # Output all reads, even pre-filtered. Warning: the output files may be quite long if turned on.
+  verbosity: 1              # How verbose Dante is. Use integers 0-3.
+  report_every: 100         # How often report progress (every this number of reads). Use 0 to not report progress at all (good for long files).
+  quiet_mode: False         # report only the bare minimum of outputs and no figures (use for many input motifs)
+  skip_alignments: False    # If True, skips the alignment generation at all.
+  gzip_outputs: infer       # If True, gzips the bulky outputs (alignments, annotations). If 'infer', True if mean read length is >= 1000.
+
+allcall:                            # Parameters of genotypization
+  param_file: miseq_params.txt      # Parameter file for genotyping. Absolute or relative from current directory.
+  prob_background: 0.001            # Probability of background "noise" reads.
+
+inputs:                          # List of input files. Each new entry starts with dash "-".
+  - path: example_long_reads.bam # Path to an input file. Use "sys.stdin" for reading from the standard input (in that case "filetype" must be filled).
+    filetype: infer              # File type of this input file. If not provided, it will be inferred from the file suffix.
+    max_reads: all               # How many reads to process from this input file. Use "all" for processing of whole file.
+
+annotation:                 # Parameters for HMM annotation
+  snp_chance: 0.0005        # Probability of an SNP (Single Nucleotide Polymorphism) in reads. Estimated as 1/2000 based on the https://en.wikipedia.org/wiki/Single-nucleotide_polymorphism .
+  delete_prob: 0.0001       # Probability of a deletion of a single nucleotide in reads. Estimated as 1/5 chance of a SNP.
+  insert_prob: 0.0001       # Probability of an insertion of a single nucleotide in reads. Estimated as 1/5 chance of a SNP.
+  max_delete_skips: 1       # Maximal size of a deletion. Longer deletions (if allowed) are internally treated as subsequent individual deletions.
+  motif_frequency: 0.001    # Motif frequency, i.e. probability penalization of starting a motif. If too low (high penalization), annotation will miss sequences.
+
+motifs:
+- chromosome: chr20
+  description: SCA36
+  full_name: spinocerebellar ataxia type 36 (gene NOP56)
+  include_unmapped: false
+  modules:
+  - seq: GGGCGCGGGCGACGCGACGGTGGGGGTTTCGGCCTGCGTTCGGGCCGCAGACAG
+  - seq: 4-GGCCTG
+  - seq: 3-CGCCTG
+  - seq: CCCTGGGAACGGGTTCCGGCAGACGCTGAG
+  postfilter:
+  - bases: 5,12,5,0
+    index_rep: 2
+    max_errors: 0.2
+    repetitions: 1,2,1,0
+  - bases: 0,5,12,5
+    index_rep: 3
+    max_errors: 0.2
+    repetitions: 0,1,2,1
+  - bases: 3,12,12,3
+    index_rep: 2
+    index_rep2: 3
+    max_errors: 0.2
+    repetitions: 1,2,2,1
+  prefilter:
+    type: DummyFilter
+  ref_end: 2652805
+  ref_start: 2652680
+
+- chromosome: chrX
+  description: SBMA
+  full_name: Spinobulbar muscular atrophy  (gene AR)
+  include_unmapped: false
+  modules:
+  - seq: CACCTCCCGGCGCCAGTTTGCTGCTGCTGC
+  - seq: 22-AGC
+  - seq: AAGAGACTAGCCCCAGGCAGCAGCAGCAGC
+  postfilter:
+  - bases: 5,6,5
+    index_rep: 2
+    max_errors: 0.2
+    repetitions: 1,2,1
+  prefilter:
+    type: DummyFilter
+  ref_end: 67545414
+  ref_start: 67545289
+
+- chromosome: chr19
+  description: SCA6
+  full_name: Spinocerebellar ataxia type 6  (gene CACNA1A)
+  include_unmapped: false
+  modules:
+  - seq: GTGGCCGCCCGGCCCGGCCTGGCCACCGCC
+  - seq: 13-TGC
+  - seq: GGGGGCCCCGAGCCGCCGGCCTTACGGATC
+  postfilter:
+  - bases: 5,6,5
+    index_rep: 2
+    max_errors: 0.2
+    repetitions: 1,2,1
+  prefilter:
+    type: DummyFilter
+  ref_end: 13207928
+  ref_start: 13207830
