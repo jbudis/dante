@@ -3,7 +3,7 @@
 # Parameters marked as "infer" are inferred during program run (not required)
 ---
 general:                    # General parameters
-  output_dir: report        # Directory path for all results, created if it does not exist. Absolute or relative from current working directory.
+  output_dir: report_bam    # Directory path for all results, created if it does not exist. Absolute or relative from current working directory.
   cpu: 8                    # Number of processes to use in the analysis.
   stranded: both            # Which strand(s) of reads to use. Accepted: "yes"/"reverse"/"both".
   profiler: False           # Use time profiler?
@@ -32,8 +32,8 @@ annotation:                 # Parameters for HMM annotation
 
 motifs:
 - chromosome: chr20
-  description: SCA36
-  full_name: spinocerebellar ataxia type 36 (gene NOP56)
+  description: spinocerebellar ataxia type 36 (gene NOP56)
+  full_name: SCA36
   include_unmapped: false
   modules:
   - seq: GGGCGCGGGCGACGCGACGGTGGGGGTTTCGGCCTGCGTTCGGGCCGCAGACAG
@@ -60,8 +60,8 @@ motifs:
   ref_start: 2652680
 
 - chromosome: chrX
-  description: SBMA
-  full_name: Spinobulbar muscular atrophy  (gene AR)
+  description: Spinobulbar muscular atrophy  (gene AR)
+  full_name: SBMA
   include_unmapped: false
   modules:
   - seq: CACCTCCCGGCGCCAGTTTGCTGCTGCTGC
@@ -78,8 +78,8 @@ motifs:
   ref_start: 67545289
 
 - chromosome: chr19
-  description: SCA6
-  full_name: Spinocerebellar ataxia type 6  (gene CACNA1A)
+  description: Spinocerebellar ataxia type 6  (gene CACNA1A)
+  full_name: SCA6
   include_unmapped: false
   modules:
   - seq: GTGGCCGCCCGGCCCGGCCTGGCCACCGCC

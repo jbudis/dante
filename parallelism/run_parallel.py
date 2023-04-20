@@ -11,7 +11,7 @@ import prefiltering
 import report
 import annotation
 
-MOTIF_PRINT_LEN = 40
+MOTIF_PRINT_LEN = 10
 
 
 def shorten_str(string: str, max_length: int, ellipsis: str = '...') -> str:
