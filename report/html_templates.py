@@ -507,4 +507,11 @@ def generate_alignment(motif: str, alignment_file: str, motif_id: str, display_t
 
         return align_vis.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
     except (IOError, TypeError, AttributeError):
-        return ''
+        try:
+            with gzip.open(alignment_file + '.gz', 'rt') as fgz:
+                string = fgz.read()
+            debug = string.find('#')
+
+            return align_vis.format(fasta=string[:debug], name=motif, motif_id=motif_id, display_text=display_text)
+        except (IOError, TypeError, AttributeError):
+            return ''

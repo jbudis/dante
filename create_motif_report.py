@@ -183,7 +183,7 @@ def parse_label(num):
         return str(int(num))
 
 
-def generate_motif_report(path, key, samples, plots, alignments, fig_heatmap, fig_hist, bgs):
+def generate_motif_report(path, key, samples, plots, fig_heatmap, fig_hist, bgs, alignments=None):
     """
     Generate report file for one motif
     :param path: str - path to output dir
@@ -204,7 +204,10 @@ def generate_motif_report(path, key, samples, plots, alignments, fig_heatmap, fi
         rows.append(generate_row(sample[0], sample[1], sample[2], sample[3],
                                  sample[4], sample[5], sample[6], sample[7]))
 
-    motif_plots = list(chain.from_iterable(zip(plots, alignments)))
+    if alignments is not None:
+        motif_plots = list(chain.from_iterable(zip(plots, alignments)))
+    else:
+        motif_plots = plots
 
     with open('%s/report_%s.html' % (path, key), 'w') as f:
         table = motif_summary.format(table='\n'.join(rows))
@@ -342,7 +345,6 @@ def create_reports(input_dir, output_dir, arg_list):
         current_alignment = []
         prev_name = ''
 
-
     print("INFO\tGenerating motif reports")
 
     # create histogram of read counts
@@ -390,7 +392,7 @@ def create_reports(input_dir, output_dir, arg_list):
         fig_histogram = go.Figure(data=[
             go.Bar(y=hist_arr, text=[parse_label(num) for num in hist_arr], name='Count histogram', marker_color=hist_color),
         ])
-        #fig_histogram.add_vline(x=len(hist_arr) - 1.5, line_width=5, line_color='black', opacity=1)
+        # fig_histogram.add_vline(x=len(hist_arr) - 1.5, line_width=5, line_color='black', opacity=1)
         fig_histogram.update_xaxes(title_text="Prediction", tickmode='array',
                                    tickvals=np.concatenate([np.array(range(0, max_count + 1, 5)), [max_count + 1]]),
                                    ticktext=list(range(0, max_count + 1, 5)) + ['E(>%d)' % (max_count + 1)])
@@ -440,7 +442,10 @@ def create_reports(input_dir, output_dir, arg_list):
                                  ticktext=list(range(0, column_max - 1, 5)) + ['E(>%d)' % (column_max - 1)])
 
         # generate motif
-        generate_motif_report(output_dir, _key, motifs[_key], plots[_key], alignments[_key], fig_heatmap, fig_histogram, bgs)
+        if _key in alignments:
+            generate_motif_report(output_dir, _key, motifs[_key], plots[_key], fig_heatmap, fig_histogram, bgs, alignments[_key])
+        else:
+            generate_motif_report(output_dir, _key, motifs[_key], plots[_key], fig_heatmap, fig_histogram, bgs)
 
 
 if __name__ == '__main__':
