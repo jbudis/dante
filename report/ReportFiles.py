@@ -329,11 +329,11 @@ def write_histogram_image2d(out_prefix: str, deduplicated: typing.List[annotatio
         if num == 0 and num_primer == 0:
             return ''
         elif num == 0 and num_primer != 0:
-            return '0/%s' % str(num_primer)
+            return '0 / %s' % str(num_primer)
         elif num != 0 and num_primer == 0:
-            return '%s/0' % str(num)
+            return '%s / 0' % str(num)
         else:
-            return '%s/%s' % (str(num), str(num_primer))
+            return '%s / %s' % (str(num), str(num_primer))
 
     str1 = 'STR %d [%s]' % (index_rep + 1, seq.split('-')[-1])
     str2 = 'STR %d [%s]' % (index_rep2 + 1, seq2.split('-')[-1])
@@ -492,7 +492,7 @@ def write_all(quality_annotations: typing.List[annotation.Annotation], filt_prim
 
         if index_rep2 is not None:
             write_histogram_image2d('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations + filt_primer, index_rep, index_rep2,
-                                    motif_modules[index_rep - 1]['seq'], motif_modules[index_rep2]['seq'])
+                                    motif_modules[index_rep]['seq'], motif_modules[index_rep2]['seq'])
         else:
             write_histogram_image('%s/repetitions_%d' % (motif_dir, j + 1), quality_annotations, filt_primer, index_rep)
 

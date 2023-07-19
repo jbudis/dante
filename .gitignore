@@ -1,3 +1,4 @@
 *.pyc
 example/report
+example/report_bam/
 example/motif_report
