@@ -171,7 +171,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-<p><a href="{alignment}">Link to alignments</a></p>
+{alignment}
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -220,7 +220,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-<p><a href="{alignment}">Link to alignments</a></p>
+{alignment}
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -251,7 +251,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-<p><a href="{alignment}">Link to alignments</a></p>
+{alignment}
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -276,7 +276,7 @@ alleles: {result}<br>
         </td>
     </tr>
 </table>
-<p><a href="{alignment}">Link to alignments</a></p>
+{alignment}
 <p><a href="#content">Back to content</a></p>
 """
 
@@ -415,7 +415,7 @@ def get_alignment_name(alignment_file: str, allele: int) -> str:
 
 
 def generate_motifb64(motif_name, description, sequence, repetition, pcolor, alignment, filtered_alignment, confidence,
-                      postfilter, highlight=None, static=False):
+                      postfilter, highlight=None, static=False, include_alignments=False):
     """
     Generate part of a html report for each motif.
     :param motif_name: str - motif name
@@ -428,7 +428,8 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
     :param confidence: tuple - motif confidences and allele predictions
     :param postfilter: dict - postfilter dict from config
     :param highlight: list(int)/None - which part of seq to highlight
-    :param static: bool - generate static code?
+    :param static: bool - generate static HTML file?
+    :param include_alignments: bool - add alignment logos to the main report?
     :return: (str, str) - content and main part of the html report for motifs
     """
     # prepare and generate alignments
@@ -476,11 +477,24 @@ def generate_motifb64(motif_name, description, sequence, repetition, pcolor, ali
         pcol = '' if pcolor is None else open(pcolor, 'r').read()
 
         # return filled valid template
-        return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
-            motif_template.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'], motif_name=motif_clean,
-                                  motif_id=motif_clean.split('_')[0], motif=motif, motif_reps=reps, result=result, motif_pcolor=pcol,
-                                  alignment=f'{motif_name.split("_")[0]}/alignments.html', sequence=sequence, errors=errors), \
-            (motif, alignment_string.format(sequence=sequence, alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
+        if include_alignments:
+            return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
+                motif_template.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                      motif_name=motif_clean, motif_id=motif_clean.split('_')[0], motif=motif,
+                                      motif_reps=reps, result=result, motif_pcolor=pcol,
+                                      alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html,
+                                      sequence=sequence, errors=errors), \
+                (motif, alignment_string.format(sequence=sequence,
+                                                alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
+        else:
+            return content_string.format(motif_name=motif_clean.split('_')[0], motif=motif), \
+                motif_template.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
+                                      motif_name=motif_clean, motif_id=motif_clean.split('_')[0], motif=motif,
+                                      motif_reps=reps, result=result, motif_pcolor=pcol,
+                                      alignment=f'<p><a href="{motif_name.split("_")[0]}/alignments.html">Link to alignments</a></p>',
+                                      sequence=sequence, errors=errors), \
+                (motif, alignment_string.format(sequence=sequence,
+                                                alignment=align_html + align_html_a1 + align_html_a2 + filt_align_html))
     else:
         return content_string_empty.format(motif_name=motif_clean.split('_')[0], motif=motif), \
             motif_string_empty.format(post_bases=postfilter['bases'], post_reps=postfilter['repetitions'],
