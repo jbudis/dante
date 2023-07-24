@@ -244,7 +244,7 @@ if __name__ == '__main__':
     report.log_str('Generating final report')
     report.write_report(config['general']['output_dir'], config['motifs'], config['general']['output_dir'],
                         config['general']['nomenclatures'], config['general']['quiet_mode'],
-                        config['general']['skip_alignments'])
+                        config['general']['skip_alignments'], config['general']['include_alignments'])
 
     # print the time of the end:
     end_time = datetime.now()

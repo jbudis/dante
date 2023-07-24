@@ -333,7 +333,7 @@ def write_histogram_image2d(out_prefix: str, deduplicated: typing.List[annotatio
         elif num != 0 and num_primer == 0:
             return '%s / 0' % str(num)
         else:
-            return '%s / %s' % (str(num), str(num_primer))
+            return '%s/%s' % (str(num), str(num_primer))
 
     str1 = 'STR %d [%s]' % (index_rep + 1, seq.split('-')[-1])
     str2 = 'STR %d [%s]' % (index_rep2 + 1, seq2.split('-')[-1])
@@ -659,7 +659,7 @@ def find_file(filename: str, include_gzip: bool = False) -> typing.Optional[str]
     return None
 
 
-def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5, quiet: bool = False, skip_alignments: bool = False) -> None:
+def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5, quiet: bool = False, skip_alignments: bool = False, include_alignments: bool = False) -> None:
     """
     Generate and write a report.
     :param report_dir: str - dir name for reports
@@ -722,7 +722,7 @@ def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5,
                 result_table = add_to_result_table(result_table, motif_name, seq, postfilter, reads_blue, reads_grey, confidence)
 
                 if not quiet:
-                    mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight)
+                    mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, include_alignments=include_alignments)
                     if motif_name in mcs:
                         ms[motif_name].append(m)
                         alignments[motif_name][1].append(a[1])
@@ -731,7 +731,7 @@ def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5,
                         ms[motif_name] = [m]
                         alignments[motif_name] = (a[0], [a[1]])
 
-                    mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, static=True)
+                    mc, m, a = report.html_templates.generate_motifb64(motif_name, description, seq, rep_file, pcol_file, align_file, filt_align_file, confidence, postfilter, highlight=highlight, include_alignments=include_alignments, static=True)
                     if mc not in mcs_static:
                         mcs_static.append(mc)
                     ms_static.append(m)
@@ -803,13 +803,14 @@ def write_report(report_dir: str, motifs: dict, output_dir: str, nomenclature=5,
         f.write(custom_format(template_static, motifs_content=contents_table,
                               table=table, motifs='\n'.join(ms_static)))
 
-    for motif in alignments.keys():
-        template_alignments = open('%s/alignments.html' % script_dir, 'r').read()
-        template_alignments = custom_format(template_alignments, sample=motif,
-                                            motif_desc=alignments[motif][0])
+    if not include_alignments:
+        for motif in alignments.keys():
+            template_alignments = open('%s/alignments.html' % script_dir, 'r').read()
+            template_alignments = custom_format(template_alignments, sample=motif,
+                                                motif_desc=alignments[motif][0])
 
-        with open('%s/%s/alignments.html' % (report_dir, motif), 'w') as f:
-            f.write(custom_format(template_alignments, alignments='\n'.join(alignments[motif][1])))
+            with open('%s/%s/alignments.html' % (report_dir, motif), 'w') as f:
+                f.write(custom_format(template_alignments, alignments='\n'.join(alignments[motif][1])))
 
     # copy javascript libraries
     if not quiet:

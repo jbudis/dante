@@ -13,6 +13,7 @@ general:                    # General parameters
   report_every: 1000000     # How often report progress (every this number of reads). Use 0 to not report progress at all (good for long files).
   quiet_mode: False         # report only the bare minimum of outputs and no figures (use for many input motifs)
   skip_alignments: False    # If True, skips the alignment generation at all.
+  include_alignments: False # If True, include the alignment logos in the report, rather than writing them to separate file for each motif
   gzip_outputs: infer       # If True, gzips the bulky outputs (alignments, annotations). If 'infer', True if mean read length is >= 1000.
 
 allcall:                                                  # Parameters of genotypization
