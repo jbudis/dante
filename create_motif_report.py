@@ -307,7 +307,7 @@ def create_reports(input_dir, output_dir, arg_list):
                 plots[name].append(temp)
 
         for cl in file.find_all(class_='align'):
-            name = cl['class'][-1]
+            name = cl['id'].split('_')[0][1:]
             msa = cl.find_next('script').text
             prev = cl.find_previous('p').find_all('u')
             disp = cl.find_previous('summary').text
