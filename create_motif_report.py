@@ -129,8 +129,7 @@ def load_arguments():
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description=textwrap.dedent("""Python program to collect Dante report files and 
-                                     create 'reversed' report for each motif, to make the comparison of multiple samples 
-                                     easier"""))
+create 'reversed' report for each motif, to make the comparison of multiple samples easier"""))
 
     # add arguments
     parser.add_argument('input_dir', help='Path to directory with Dante reports')
@@ -316,7 +315,7 @@ def create_reports(input_dir, output_dir, arg_list):
             if len(prev) > 1:
                 continue
 
-            msa_data = re.match(r"[\w\W]+let \w+_fasta = (`[\w\W]*`);[\w\W]+", msa).group(1)
+            msa_data = re.match(r"[\w\W]+var fasta = (`[\w\W]*`);[\w\W]+", msa).group(1)
 
             name += '_' + prev[0].text
             if prev_name == '':
