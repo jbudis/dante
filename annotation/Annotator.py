@@ -31,7 +31,10 @@ def code_base(base):
     :param base: nucleotide , e.g C
     :return: integer code, e.g. 1
     """
-    return NUCLEOTIDES.index(base)
+    try:
+        return NUCLEOTIDES.index(base)
+    except ValueError:
+        return 4 # value of N
 
 
 class Annotator:
@@ -407,6 +410,9 @@ class Annotator:
                  annotation for the input sequence in a string representation
         """
         seq = list(map(code_base, read.sequence))
+        # debug:
+        if 4 in seq:
+            print('Weird read:', read.name, read.sequence)
         qual = list(map(quality_index, read.quality))
         probability, predicted_states = self.decoder.decode_log(seq, qual)
         state_seq = [self.states[i] for i in predicted_states]
