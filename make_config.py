@@ -58,6 +58,8 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
     parser.add_argument('table_file', type=nonempty_file, help='Table of motifs in tsv or csv format')
     parser.add_argument('config_file', type=nonempty_file, help='YAML configuration file')
 
+    parser.add_argument('-o', '--output-file', type=str, help='Output file path. Default=config_file', default=None)
+
     parser.add_argument('--flank', type=int, help='Length of flanking sequence (default=30)', default=30)
     parser.add_argument('--seq', type=int,
                         help='The way of typing repetitive sequence with 1 repetition into YAML file. (default=1)',
@@ -826,7 +828,7 @@ if __name__ == "__main__":
         config['motifs'] = motifs
 
     # write config dictionary into .yaml file
-    with open(args.config_file, 'w') as file:
+    with open(args.output_file if args.output_file is not None else args.config_file, 'w') as file:
         yaml.dump(config, file)
 
     print_report(table.shape[0], without_problem, rep_rem, rep_dec, rep_inc, er_in_bases,
