@@ -401,7 +401,7 @@ class Inference:
             for model_index2 in range(model_index1, max_rep):
                 tested_models.append((model_index1, model_index2))
             tested_models.append((model_index1, 'E'))
-            # tested_models.append(('B', model_index1))
+            tested_models.append(('B', model_index1))
 
         tested_models.append(('B', 'B'))
         tested_models.append(('E', 'E'))
@@ -433,22 +433,22 @@ class Inference:
         :param display_file: str - filename for pcolor image output
         :param name: str - name to use in title
         :param lognorm: bool - use loglog scale in displaying likelihood array
-        :return: tuple(int, int) - option with highest likelihood
+        :return: tuple(int, int) - option with the highest likelihood
         """
         # convert to a numpy array:
         lh_array = np.zeros((self.max_rep, self.max_rep + 1))
         for (k1, k2), v in lh_dict.items():
+            if k2 == 'B' or k1 == 'E' or isinstance(k1, int) and isinstance(k2, int) and k2 < k1: # B is the smallest, E is the largest!
+                k1, k2 = k2, k1
             if k1 == 'B':
                 k1 = 0
             if k2 == 'B':
                 k2 = 0
-            if k1 == 'E':
+            if k1 == 'E': # only if k2 is 'E' too.
                 k1 = 0
             if k2 == 'E':
                 k2 = self.max_rep
             lh_array[k1, k2] = v
-
-        # print(lh_dict, lh_array)
 
         # get minimal and maximal likelihood
         ind_good = (lh_array < 0.0) & (lh_array > -1e10) & (lh_array != np.nan)
@@ -468,43 +468,47 @@ class Inference:
                 z_min = -np.log(-z_min)
                 z_max = -np.log(-z_max)
             else:
-                lh_view = lh_array
+                lh_view = lh_array.copy()
+
+            # background (B, i) - copy it below min_rep
+            lh_view[self.min_rep - 1, :] = lh_view[0, :]
 
             lh_copy = lh_view.copy()
+            lh_copy[-1, self.min_rep] = lh_copy[0, 0]
+            lh_copy[-1, self.min_rep + 1] = lh_copy[0, self.max_rep]
 
-            # background:
+            # background (B,B)
             bg_size = max(2, (len(lh_view) - self.min_rep) // 6)
             if len(lh_view) - self.min_rep <= 6:
                 bg_size = 1
             lh_view[-bg_size:, self.min_rep:self.min_rep + bg_size] = lh_view[0, 0]
-            # expanded
+            # expanded (E,E)
             lh_view[-bg_size:, self.min_rep + bg_size:self.min_rep + 2 * bg_size] = lh_view[0, self.max_rep]
 
-            lh_copy[-1, self.min_rep] = lh_copy[0, 0]
-            lh_copy[-1, self.min_rep + 1] = lh_copy[0, self.max_rep]
-
             # plotting
-            plt.title("%s likelihood of each option for %s" % ("Loglog" if lognorm else "Log", name))
+            plt.title('%s likelihood of each option for %s' % ('Loglog' if lognorm else 'Log', name))
             plt.xlabel('2nd allele')
             plt.ylabel('1st allele')
             start_ticks = 5
             step_ticks = 5
             plt.xticks(np.concatenate([np.array(range(start_ticks - self.min_rep, max_str - self.min_rep, step_ticks)), [max_str - self.min_rep]]) + 0.5,
                        list(range(start_ticks, max_str, step_ticks)) + ['E(>%d)' % (self.max_with_e - 2)])
-            plt.yticks(np.array(range(start_ticks - self.min_rep, max_str - self.min_rep, step_ticks)) + 0.5, range(start_ticks, max_str, step_ticks))
+            plt.yticks(np.concatenate([np.array(range(start_ticks - self.min_rep + 1, max_str - self.min_rep + 1, step_ticks)), [0]]) + 0.5,
+                       list(range(start_ticks, max_str, step_ticks)) + ['B'])
             palette = copy(plt.cm.jet)
             palette.set_under('gray', 1.0)
-            plt.pcolor(lh_view[self.min_rep:, self.min_rep:], cmap=palette, vmin=z_min, vmax=z_max)
+            plt.pcolor(lh_view[self.min_rep - 1:, self.min_rep:], cmap=palette, vmin=z_min, vmax=z_max)
             plt.colorbar()
 
-            # draw dividing line:
-            plt.plot([max_str - self.min_rep, max_str - self.min_rep], [0, max_str - self.min_rep], 'k', linewidth=3)
+            # draw dividing line(s):
+            plt.plot([max_str - self.min_rep, max_str - self.min_rep], [0, max_str - self.min_rep + 1], 'k', linewidth=3)
+            plt.plot([0, max_str - self.min_rep + 1], [1, 1], 'k', linewidth=3)
 
-            # background:
-            plt.text(float(bg_size) / 2.0, max_str - self.min_rep - float(bg_size) / 2.0, 'BG', size=20, horizontalalignment='center',
+            # text background:
+            plt.text(float(bg_size) / 2.0, max_str - self.min_rep + 1 - float(bg_size) / 2.0, 'BG', size=20, horizontalalignment='center',
                      verticalalignment='center', path_effects=[PathEffects.withStroke(linewidth=2.5, foreground="w")])
-            # expanded
-            plt.text(bg_size + float(bg_size) / 2.0, max_str - self.min_rep - float(bg_size) / 2.0, 'Exp', size=20, horizontalalignment='center',
+            # text expanded
+            plt.text(bg_size + float(bg_size) / 2.0, max_str - self.min_rep + 1 - float(bg_size) / 2.0, 'Exp', size=20, horizontalalignment='center',
                      verticalalignment='center', path_effects=[PathEffects.withStroke(linewidth=2.5, foreground="w")])
 
             # save
@@ -513,34 +517,31 @@ class Inference:
             plt.close()
 
             # ----- PLOTLY HISTOGRAM -----
-            text = [['' for _ in range(max_str - self.min_rep)] for _ in range(max_str - self.min_rep)]
-            text[max_str - self.min_rep - 1][0] = 'BG'
-            text[max_str - self.min_rep - 1][1] = 'Exp'
+            text = [['' for _ in range(max_str - self.min_rep + 1)] for _ in range(max_str - self.min_rep + 1)]
+            text[-1][0] = 'B'
+            text[-1][1] = 'E'
+
+            hovertext = [[f'{j}/{i}' for i in list(range(self.min_rep, max_str)) + ['E']] for j in ['B'] + list(range(self.min_rep, max_str))]
+            hovertext[0][-1] = 'E/E'
+            hovertext[-1][0] = 'B'
+            hovertext[-1][1] = 'E'
 
             fig = go.Figure()
-            fig.add_trace(go.Heatmap(z=lh_copy[self.min_rep:, self.min_rep:],
-                                     text=text, name='pcolor',
+            fig.add_trace(go.Heatmap(z=lh_copy[self.min_rep - 1:, self.min_rep:],
+                                     text=text, name='', hovertext=hovertext,
                                      showscale=True, colorscale='Jet'))
-            fig.add_vline(x=max_str - self.min_rep - 0.5,
-                          line_width=5, line_color='black', opacity=1)
-            # fig.add_annotation(text='BG', xref='x domain', yref='y domain', xanchor='center', yanchor='middle',
-            #                    x=(float(bg_size) / 2.0) / lh_view.shape[1],
-            #                    y=(max_str - self.min_rep - float(bg_size) / 2.0) / lh_view.shape[0],
-            #                    font_size=20, showarrow=False)
-            # fig.add_annotation(text='Exp', xref='x domain', yref='y domain', xanchor='center', yanchor='middle',
-            #                    x=(bg_size + float(bg_size) / 2.0) / lh_view.shape[1],
-            #                    y=(max_str - self.min_rep - float(bg_size) / 2.0) / lh_view.shape[0],
-            #                    font_size=20, showarrow=False)
+            fig.add_vline(x=max_str - self.min_rep - 0.5, line_width=5, line_color='black', opacity=1)
+            fig.add_hline(y=0.5, line_width=5, line_color='black', opacity=1)
 
             fig.update_traces(texttemplate='%{text}', textfont_size=15,
-                              hovertemplate='<b>{log} likelihood:\t%{z}</b>'.format(log='Loglog' if lognorm else 'Log', z='{z}'))
+                              hovertemplate='<b>%{{hovertext}} - {log} likelihood:\t%{{z}}</b>'.format(log='Loglog' if lognorm else 'Log'))
             fig.update_layout(width=500, height=450,
                               template='simple_white',
                               yaxis_fixedrange=True, xaxis_fixedrange=True,
                               title='%s likelihood of each option for %s' % ('Loglog' if lognorm else 'Log', name))
             fig.update_yaxes(title_text='1st allele', tickmode='array',
-                             tickvals=np.array(range(start_ticks - self.min_rep, max_str - self.min_rep, step_ticks)),
-                             ticktext=list(range(start_ticks, max_str, step_ticks)))
+                             tickvals=np.concatenate([np.array(range(start_ticks - self.min_rep + 1, max_str - self.min_rep + 1, step_ticks)), [0]]),
+                             ticktext=list(range(start_ticks, max_str, step_ticks)) + ['B'])
             fig.update_xaxes(title_text='2nd allele', tickmode='array',
                              tickvals=np.concatenate([np.array(range(start_ticks - self.min_rep, max_str - self.min_rep, step_ticks)), [max_str - self.min_rep]]),
                              ticktext=list(range(start_ticks, max_str, step_ticks)) + ['E(>%d)' % (self.max_with_e - 2)])
@@ -554,10 +555,10 @@ class Inference:
         best = sorted(np.unravel_index(np.argmax(lh_array), lh_array.shape))
 
         # and convert it to symbols
-        if best[0] == 0 and best[1] == 0:
-            best_sym = ('B', 'B')
+        if best[0] == 0 and best[1] == self.max_rep:
+            best_sym = ('E', 'E')
         else:
-            best_sym = list(map(lambda x: 'E' if x == self.max_rep or x == 0 else x, best))
+            best_sym = list(map(lambda x: 'E' if x == self.max_rep else 'B' if x == 0 else x, best))
 
         return lh_array, best, best_sym
 
@@ -573,8 +574,12 @@ class Inference:
         lh_corr_array = lh_array - np.max(lh_array)
         lh_sum = np.sum(np.exp(lh_corr_array))
         confidence = np.exp(lh_corr_array[predicted[0], predicted[1]]) / lh_sum
-        confidence1 = np.sum(np.exp(lh_corr_array[predicted[0], :])) / lh_sum
-        confidence2 = np.sum(np.exp(lh_corr_array[:, predicted[1]])) / lh_sum
+        if predicted[0] == predicted[1]:
+            confidence1 = np.sum(np.exp(lh_corr_array[predicted[0], :])) / lh_sum
+            confidence2 = np.sum(np.exp(lh_corr_array[:, predicted[1]])) / lh_sum
+        else:
+            confidence1 = (np.sum(np.exp(lh_corr_array[predicted[0], :])) + np.sum(np.exp(lh_corr_array[:, predicted[0]])) - np.exp(lh_corr_array[predicted[0], predicted[0]])) / lh_sum
+            confidence2 = (np.sum(np.exp(lh_corr_array[:, predicted[1]])) + np.sum(np.exp(lh_corr_array[predicted[1], :])) - np.exp(lh_corr_array[predicted[1], predicted[1]])) / lh_sum
 
         confidence_back = np.exp(lh_corr_array[0, 0]) / lh_sum
         confidence_back_all = np.sum(np.exp(lh_corr_array[0, :])) / lh_sum
