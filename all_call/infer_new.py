@@ -129,7 +129,7 @@ class Inference:
 
     # default parameters for inference
     DEFAULT_MODEL_PARAMS = (-0.0107736, 0.00244419, 0.0, 0.00440608)
-    DEFAULT_FIT_FUNCTION = "linear"
+    DEFAULT_FIT_FUNCTION = 'linear'
 
     def __init__(self, read_distribution, params_file, str_rep=3, minl_primer1=5, minl_primer2=5, minl_str=5, p_bckg_closed=None, p_bckg_open=None, p_expanded=None):
         """
@@ -168,7 +168,7 @@ class Inference:
 
         # extract params
         model_params, rate_func_str = self.read_params(self.params_file)
-        str_to_func = {"linear": linear_rate, "const": const_rate, "exponential": exp_rate, "square": n2_rate}
+        str_to_func = {'linear': linear_rate, 'const': const_rate, 'exponential': exp_rate, 'square': n2_rate}
         rate_func = const_rate
         if rate_func_str in str_to_func.keys():
             rate_func = str_to_func[rate_func_str]
@@ -574,12 +574,18 @@ class Inference:
         lh_corr_array = lh_array - np.max(lh_array)
         lh_sum = np.sum(np.exp(lh_corr_array))
         confidence = np.exp(lh_corr_array[predicted[0], predicted[1]]) / lh_sum
-        if predicted[0] == predicted[1]:
+        if predicted[0] == predicted[1]:  # same alleles - we compute the probability per allele
             confidence1 = np.sum(np.exp(lh_corr_array[predicted[0], :])) / lh_sum
             confidence2 = np.sum(np.exp(lh_corr_array[:, predicted[1]])) / lh_sum
-        else:
-            confidence1 = (np.sum(np.exp(lh_corr_array[predicted[0], :])) + np.sum(np.exp(lh_corr_array[:, predicted[0]])) - np.exp(lh_corr_array[predicted[0], predicted[0]])) / lh_sum
-            confidence2 = (np.sum(np.exp(lh_corr_array[:, predicted[1]])) + np.sum(np.exp(lh_corr_array[predicted[1], :])) - np.exp(lh_corr_array[predicted[1], predicted[1]])) / lh_sum
+        elif predicted[1] == lh_corr_array.shape[0]:  # expanded allele - expanded is only on one side of the array
+            confidence1 = (np.sum(np.exp(lh_corr_array[predicted[0], :])) + np.sum(np.exp(lh_corr_array[:, predicted[0]])) - np.exp(
+                lh_corr_array[predicted[0], predicted[0]])) / lh_sum
+            confidence2 = np.sum(np.exp(lh_corr_array[:, predicted[1]])) / lh_sum
+        else:  # normal behavior - different alleles , no expanded, compute all likelihoods of the alleles
+            confidence1 = (np.sum(np.exp(lh_corr_array[predicted[0], :])) + np.sum(np.exp(lh_corr_array[:, predicted[0]])) - np.exp(
+                lh_corr_array[predicted[0], predicted[0]])) / lh_sum
+            confidence2 = (np.sum(np.exp(lh_corr_array[:, predicted[1]])) + np.sum(np.exp(lh_corr_array[predicted[1], :])) - np.exp(
+                lh_corr_array[predicted[1], predicted[1]])) / lh_sum
 
         confidence_back = np.exp(lh_corr_array[0, 0]) / lh_sum
         confidence_back_all = np.sum(np.exp(lh_corr_array[0, :])) / lh_sum
@@ -600,13 +606,13 @@ class Inference:
         """
 
         def write_output_fd(f, predicted, conf, name):
-            print("Predicted alleles for %s: (confidence = %5.1f%%)" % (str(name), conf[0] * 100.0), file=f)
-            print("\t%3s (confidence = %5.1f%%)" % (str(predicted[0]), conf[1] * 100.0), file=f)
-            print("\t%3s (confidence = %5.1f%%)" % (str(predicted[1]), conf[2] * 100.0), file=f)
-            print("B   B  %7.3f%%" % (conf[3] * 100.0), file=f)
-            print("all B  %7.3f%%" % (conf[4] * 100.0), file=f)
-            print("B   E  %7.3f%%" % (conf[5] * 100.0), file=f)
-            print("all E  %7.3f%%" % (conf[6] * 100.0), file=f)
+            print('Predicted alleles for %s: (confidence = %5.1f%%)' % (str(name), conf[0] * 100.0), file=f)
+            print('\t%3s (confidence = %5.1f%%)' % (str(predicted[0]), conf[1] * 100.0), file=f)
+            print('\t%3s (confidence = %5.1f%%)' % (str(predicted[1]), conf[2] * 100.0), file=f)
+            print('B   B  %7.3f%%' % (conf[3] * 100.0), file=f)
+            print('all B  %7.3f%%' % (conf[4] * 100.0), file=f)
+            print('B   E  %7.3f%%' % (conf[5] * 100.0), file=f)
+            print('all E  %7.3f%%' % (conf[6] * 100.0), file=f)
 
         if type(file_desc) is str:
             with open(file_desc, 'w') as f:

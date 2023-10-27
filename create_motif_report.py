@@ -134,10 +134,10 @@ create 'reversed' report for each motif, to make the comparison of multiple samp
     # add arguments
     parser.add_argument('input_dir', help='Path to directory with Dante reports')
     parser.add_argument('output_dir', help='Path to directory where the output will be stored', nargs='?',
-                          default='example/motif_report')
+                        default='example/motif_report')
     parser.add_argument('--report_every', type=int, help='Specify how often a progress message should be printed (default=5)',
                         default=5)
-    parser.add_argument('-q', '--quiet', help="Don't print any progress messages", action='store_true')
+    parser.add_argument('-q', '--quiet', help='Don\'t print any progress messages', action='store_true')
 
     args = parser.parse_args()
 
@@ -238,15 +238,15 @@ def create_reports(input_dir, output_dir, arg_list):
     prev_name = ''
 
     if len(paths) == 0:
-        print("ERROR\tInput directory is empty")
+        print('ERROR\tInput directory is empty')
         return
 
     cnt = 1
-    print("INFO\tParsing reports")
+    print('INFO\tParsing reports')
 
     for path in natsorted(paths):
         if not arg_list.quiet and cnt % arg_list.report_every == 0:
-            print("INFO\tParsing file\t%d/%d" % (cnt, len(paths)))
+            print('INFO\tParsing file\t%d/%d' % (cnt, len(paths)))
         cnt += 1
 
         file = BeautifulSoup(open(path, 'r'), 'html.parser')
@@ -344,7 +344,7 @@ def create_reports(input_dir, output_dir, arg_list):
         current_alignment = []
         prev_name = ''
 
-    print("INFO\tGenerating motif reports")
+    print('INFO\tGenerating motif reports')
 
     # create histogram of read counts
     for _key in motifs.keys():
@@ -370,33 +370,27 @@ def create_reports(input_dir, output_dir, arg_list):
         hist_arr = [0 for _ in range(max_count + 2)]
         hist_color = ['#636EFA' for _ in range(max_count + 1)] + ['#EF553B']
 
-        bgs = 0
-
         for i in range(len(a1)):
-            if a2[i] == 'E':
-                if a1[i] == 'E':
-                    arr[a1_max + 1, a2_max + 1] += 1
-                else:
-                    arr[a1[i], a2_max + 1] += 1
-                hist_arr[-1] += 1
-            elif a2[i] == 'B':
-                bgs += 1
-            elif a2[i] == '---':
+            if a2[i] == '---':
                 pass
             else:
-                arr[a1[i], a2[i]] += 1
-                hist_arr[a1[i]] += 1
-                hist_arr[a2[i]] += 1
+                al1 = 0 if a1[i] == 'B' else -1 if a1[i] == 'E' else int(a1[i])
+                al2 = 0 if a2[i] == 'B' else -1 if a2[i] == 'E' else int(a2[i])
+                if al1 == -1 and al2 == -1:  # special case when (E, E)
+                    al1 = 0
+                arr[al1, al2] += 1
+                hist_arr[al1] += 1
+                hist_arr[al2] += 1
 
         fig_histogram = go.Figure(data=[
             go.Bar(y=hist_arr, text=[parse_label(num) for num in hist_arr], name='Count histogram', marker_color=hist_color),
         ])
         # fig_histogram.add_vline(x=len(hist_arr) - 1.5, line_width=5, line_color='black', opacity=1)
-        fig_histogram.update_xaxes(title_text="Prediction", tickmode='array',
-                                   tickvals=np.concatenate([np.array(range(0, max_count + 1, 5)), [max_count + 1]]),
-                                   ticktext=list(range(0, max_count + 1, 5)) + ['E(>%d)' % (max_count + 1)])
-        fig_histogram.update_yaxes(title_text="Count")
-        fig_histogram.update_traces(hovertemplate="<b>Prediction:\t%{x}</b><br />Count:\t%{y}<br />", textfont_size=7)
+        fig_histogram.update_xaxes(title_text='Prediction', tickmode='array',
+                                   tickvals=np.concatenate([[0, 1], np.array(range(5, max_count + 1, 5)), [max_count + 1]]),
+                                   ticktext=['B', 1] + list(range(5, max_count + 1, 5)) + ['E(>%d)' % (max_count + 1)])
+        fig_histogram.update_yaxes(title_text='Count')
+        fig_histogram.update_traces(hovertemplate='<b>Prediction:\t%{x}</b><br />Count:\t%{y}<br />', textfont_size=7)
         fig_histogram.update_layout(width=1000, height=500, template='simple_white',
                                     barmode='stack', yaxis_fixedrange=True, hovermode='x')
 
@@ -420,23 +414,24 @@ def create_reports(input_dir, output_dir, arg_list):
 
         text = [[parse_label(arr[i, j]) for j in range(arr.shape[1])] for i in range(arr.shape[0])]
 
-        arr = arr / np.max(arr)
+        bgs = sum(arr[0, :])
+        # arr = arr / np.max(arr)
 
         # create heatmap of alleles
         fig_heatmap = go.Figure(data=[
-            go.Heatmap(z=list(arr), text=text, textfont={"size": 10}, colorscale='Hot_r',
-                       hovertemplate="<b>Allele 1:\t%{y}<br />Allele 2:\t%{x}</b><br />Count:\t%{text}",
-                       texttemplate="%{text}", name='Prediction heatmap')
+            go.Heatmap(z=list(arr), text=text, textfont={'size': 10}, colorscale='Hot_r',
+                       hovertemplate='<b>Allele 1:\t%{y}<br />Allele 2:\t%{x}</b><br />Count:\t%{text}',
+                       texttemplate='%{text}', name='Prediction heatmap')
         ])
         fig_heatmap.add_vline(x=a2_max + 0.5, line_width=5, line_color='black', opacity=1)
-        fig_heatmap.add_hline(y=a1_max + 0.5, line_width=5, line_color='black', opacity=1)
+        fig_heatmap.add_hline(y=0.5, line_width=5, line_color='black', opacity=1)
         fig_heatmap.update_layout(width=750, height=750, template='simple_white',
-                                  yaxis=dict(range=[row_count-1.5, row_max-0.5]),
-                                  xaxis=dict(range=[column_count-1.5, column_max-0.5]))
-        fig_heatmap.update_yaxes(title_text="Allele 1", tickmode='array',
-                                 tickvals=np.concatenate([np.array(range(0, row_max - 1, 5)), [row_max - 1]]),
-                                 ticktext=list(range(0, row_max - 1, 5)) + ['E(>%d)' % (row_max - 1)])
-        fig_heatmap.update_xaxes(title_text="Allele 2", tickmode='array',
+                                  yaxis=dict(range=[row_count - 1.5, row_max - 0.5]),
+                                  xaxis=dict(range=[column_count - 1.5, column_max - 0.5]))
+        fig_heatmap.update_yaxes(title_text='Allele 1', tickmode='array',
+                                 tickvals=np.concatenate([[0, 1], np.array(range(5, row_max, 5))]),
+                                 ticktext=['B', 1] + list(range(5, row_max, 5)))
+        fig_heatmap.update_xaxes(title_text='Allele 2', tickmode='array',
                                  tickvals=np.concatenate([np.array(range(0, column_max - 1, 5)), [column_max - 1]]),
                                  ticktext=list(range(0, column_max - 1, 5)) + ['E(>%d)' % (column_max - 1)])
 
