@@ -1,13 +1,14 @@
 import argparse
-import pandas as pd
-import ensembl_rest
 import re
 import sys
-import yaml
 import textwrap
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from copy import deepcopy
+
+import ensembl_rest
+import pandas as pd
+import yaml
 
 # imports from dante files
 from arguments.input import nonempty_file
@@ -74,7 +75,7 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
                         default=2)
 
     parser.add_argument('-m', '--min-mapq', type=int,
-                        help='Minimum mapping quality to pass selection process')
+                        help='Minimum mapping quality to pass selection process, default=0', default=0)
 
     parser.add_argument('-e', '--max-errors', type=int,
                         help='Maximum number of errors in repetitive sequence from table compared to reference sequence (default=1)', default=1)
@@ -82,10 +83,11 @@ The way of typing repetitive sequence with 1 repetition into YAML file.
     parser.add_argument('-u', '--include-unmapped', help='Include unmapped reads', action='store_true')
     parser.add_argument('-r', help='Remove current motifs in YAML configuration file', action='store_true')
     parser.add_argument('--quiet', help='Does not print errors and warning messages', action='store_true')
-    parser.add_argument('--postfilter', help='Options to add to postfilter, for example "max_errors: 0.2" for 20% of errors allowed')
+    parser.add_argument('--postfilter', help='Options to add to postfilter, for example "max_errors: 0.2" for 20%% of errors allowed')
     parser.add_argument('--prefilter', help='Applies prefilter, default is to not use prefilter for BAM inputs', action='store_true')
     parser.add_argument('--nomenclature-column', help='Name of the column for nomenclature (default=nomenclature)', default='nomenclature')
-    parser.add_argument('--skip-check', help='Skip checks for the repetition parts. Good if you need to supply non-perfect nomenclatures.', action='store_true')
+    parser.add_argument('--skip-check', help='Skip checks for the repetition parts. Good if you need to supply non-perfect nomenclatures.',
+                        action='store_true')
 
     args = parser.parse_args()
 
@@ -285,7 +287,7 @@ def check_repetitions(sequence, seq_left, seq_right, list_rep, max_errors=1, ver
                 while re.match(get_regexp(prev.seq), sequence):
                     sequence = sequence[len(prev.seq):]
                     prev.num += 1
-                if prev.num > list_rep[i-1].num:
+                if prev.num > list_rep[i - 1].num:
                     prev.num -= n_errors
 
             else:
@@ -682,7 +684,8 @@ def print_report(n_motifs, without_corrections, removed_repetitions, decreased_r
     print(f'From available {n_motifs} motifs:')
     print(f'    {n_motifs - len(removed_repetitions) - errors_in_table - errors_empty_nom} converted')
     print(f'        {without_corrections} converted without problems')
-    print(f'        {n_motifs - without_corrections - len(removed_repetitions) - errors_in_table - errors_empty_nom} converted after error correction')
+    print(f'        {n_motifs - without_corrections - len(removed_repetitions) - errors_in_table - errors_empty_nom} '
+          f'converted after error correction')
     print(f'        Corrections:')
     print(f'            {decreased_repetitions} decreased repetitions')
     print(f'            {increased_repetitions} increased repetitions')
@@ -697,7 +700,8 @@ def print_report(n_motifs, without_corrections, removed_repetitions, decreased_r
     print(f'        {errors_in_table} removed due to error in table (invalid reference genome or no repetitions)')
     print(f'        {errors_empty_nom} removed due to empty "nomenclature" column')
     print()
-    print(f'{in_config} motifs written into config file -> {n_motifs - len(removed_repetitions) - errors_in_table - in_config - errors_empty_nom} converted motifs were removed in deduplication process')
+    print(f'{in_config} motifs written into config file -> {n_motifs - len(removed_repetitions) - errors_in_table - in_config - errors_empty_nom} '
+          f'converted motifs were removed in deduplication process')
 
 
 """
