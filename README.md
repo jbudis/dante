@@ -23,6 +23,8 @@ Dante is developed and tested on Python 3.7 with libraries determined in the `co
 mamba env create -n dante -f conda_env.yaml
 ```
 
+Sometimes, mamba would not install the 'regex' package. If that happens, install it without it, and then install the 'regex' package afterwards. 
+
 Furthermore, if you need to use the config converter program `make_config.py`, you need to additionally install `ensembl_rest` python package (not available directly through conda):
 
 ```bash
